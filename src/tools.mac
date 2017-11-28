@@ -1,0 +1,55 @@
+%ifndef tools
+%define tools 0x00
+; %1 = min , %2 = max , %3 = value
+%macro inRange 3
+
+mov eax,%1
+cmp eax,%3
+ja %%over      ; if min > value
+
+mov eax,%2	   	
+cmp eax,%3
+jb %%over	   ; if max < value
+
+xor eax,eax		;limpio registro
+mov eax,1		;eax = 1
+jmp %%end
+%%over:
+xor eax,eax		;limpio registro
+
+%%end:
+%endmacro
+
+;limpia registros
+%macro cleanReg 0
+xor eax,eax
+xor edx,edx
+xor ecx,ecx
+xor ebx,ebx
+%endmacro
+
+;xor a un registro sin cambiar flags
+;%1 = registro
+%macro clean 1
+pushf
+xor %1,%1
+popf
+%endmacro
+
+
+%macro startSubR 0 
+mov ebp,esp
+push ebp
+push ebx
+push ecx
+push edx
+cleanReg
+%endmacro
+%macro endSubR 1
+pop edx
+pop ecx
+pop ebx
+pop ebp
+ret %1
+%endmacro
+%endif

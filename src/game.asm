@@ -1,12 +1,13 @@
 %include "video.mac"
 %include "keyboard.mac"
-
+section .data
+current dw 0
 section .text
 
 extern clear
-extern scan
+extern getChar
 extern calibrate
-
+extern UpdateKeyboard
 ; Bind a key to a procedure
 %macro bind 2
   cmp byte [esp], %1
@@ -34,6 +35,7 @@ game:
   ; Snakasm main loop
   game.loop:
     .input:
+      call UpdateKeyboard
       call get_input
 
     ; Main loop.
@@ -45,30 +47,8 @@ game:
     jmp game.loop
 
 
-draw.red:
-  FILL_SCREEN BG.RED
-  ret
-
-
-draw.green:
-  FILL_SCREEN BG.GREEN
-  ret
-
-
 get_input:
-    call scan
-    push ax
-    ; The value of the input is on 'word [esp]'
-
-    ; Your bindings here
-    cmp al, KEY.UP
-    jne not_up
-    call draw.red
-    not_up:
-    cmp al, KEY.DOWN
-    jne not_down
-    call draw.green
-    not_down:
-
-    add esp, 2 ; free the stack
-    ret
+call getChar
+mov ah,0x03
+FILL_SCREEN ax 
+ret
