@@ -2,19 +2,18 @@
 
 
 section .edata
-	textlength  dw 		65535   ;el tamanno del texto
+	textlength  dw 		65535   ;el tamano del texto
 section .bss
 global text
 	text	resb 	65535	;donde guardo el texto 
 	lines	resd 	800		;control de lineas :  <comienzo,final> en funcion de bytes del text
 section .data
 global cursor
-	cursor 		dw		0		;la posision del cursor
+	cursor 		dw		0		;la posicion del cursor
 	currentline	dw		0 		;la linea actual
-
+	lastline 	dw 		0		;la ultima linea que se ha escrito
 
 section .text
-
 
 extern UpdateBuffer
 
@@ -108,7 +107,62 @@ text.move:
 	.end:
 	endSubR 12
 
-;
+;Recibe una linea y determina en donde empieza la linea y la cantidad de caracteres
+;call:
+;push dword line: ebp + 4
+;call text.lineindex
+;return: ax -> posicion en donde empieza la linea, dx -> cantidad de caracteres
+global text.lineindex
+text.lineindex:
+	push ebp
+	lea ebp, [esp+4]
+	push ebx
+
+	mov ebx, lines	
+	add ebx, [ebp+4]			;indexo lines[line]
+	mov dx, [ebx]
+	add ebx,2
+	mov ax, [ebx]				;pongo en bx la parte baja del registro (la cant de caracteres)
+	
+	pop ebx
+	pop ebp
+	ret 4
+
+;Determina la posicion en donde se acaba una linea (solo haya ceros a la der)
+;call:
+;push dword line: ebp + 4
+;call text.endline
+;return: ax -> posicion donde esta el final de la linea
+global text.endline
+text.enline:
+	startSubR
+		push dword [ebp+4]			;pongo la linea que me piden como parametro
+		call text.lineindex			;llamo a lineindex para obtener, en ax donde empieza la linea y en dx la cantidad de caracteres
+		add ax, dx					;el final de linea seria donde comienza mas la cantidad de caracteres
+	endSubR 4
+
+;Determina la linea que ocupa una posicion determinada
+;call:
+;push dword posicion: ebp + 4
+;call text.line
+;return: eax -> numero de linea
+global text.line
+text.line:
+	startSubR
+		mov ecx, [lastline]				;guardo un contador de las lineas que voy a analinzar
+		;mov ebx, lines	
+		.lp:
+			mov eax, [lines+4*ecx]
+			cmp eax, [ebp+4]
+			jb .end
+
+			dec ecx
+			cmp ecx, 0
+			jae .lp
+		.end:
+		mov eax, ecx					;guardo en ax la ultima linea que analice, que es en donde esta la posiciom
+	endSubR 4
+
 ;;call:
 ;;push dword start: ebp +12
 ;;push dword end: ebp +8

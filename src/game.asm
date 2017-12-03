@@ -5,7 +5,7 @@ section .data
 
 
 extern text.move
-extern getKey
+extern isKey1,isKey2,isKey3
 extern text
 extern cursor
 extern getChar
@@ -45,9 +45,14 @@ call UpdateBuffer
 jmp .end2					;entonces, se salta hasta el final
 .end:
 ;Para probar el backspace:
-mov eax, key.bcksp
+mov eax,key.shiftL
+push eax
+mov eax,key.ctrl
+push eax
+mov eax, key.backspace
 push eax	 				;se comprueba si se presiono backspace
-call getKey
+
+call isKey3
 cmp ax,1					;si no se presiono, salta hasta el final
 jne .end2
 push dword 80
