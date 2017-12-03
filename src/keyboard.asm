@@ -18,7 +18,7 @@ keys 	db  0x00,	0x00,	0x00,	0x00,
 		db 	0x0c,	0x8c,	0x2d,	0x5f,
 		db 	0x0d,	0x8d,	0x3d,	0x2b,
 		db 	0x0e,	0x8e,	0x00,	0x00,
-		db 	0x0f,	0x8f,	0x00,	0x00,
+		db 	0x0f,	0x8f,	0x09,	0x09,
 		db 	0x10,	0x90,	0x71,	0x51,
 		db 	0x11,	0x91,	0x77,	0x57,
 		db 	0x12,	0x92,	0x65,	0x45,
@@ -128,12 +128,8 @@ section .data
 		mov [keyflags],dl	;recupero flags
 %endmacro
 
-
-
 section .text
-
-
-;invocacion:
+;call:
 ;call cashcaps
 SetCapsFlag:
 
@@ -151,14 +147,8 @@ startSubR
     	jne .end 				;else
     	xor dl,_capsBit2
     	test dl,_capsBit2		;estaba apagado?
-    	jz .off				    ;then
-    	mov al,0
-    	out 0x60,al				;quito up code 
-    	jmp .end
-	.off:
+    	jnz .end
  		and dl,~_capsBit
- 		mov al,0
-    	out 0x60,al				;quito up code 
 	.end:
 		mov [keyflags],dl
 endSubR 0
@@ -169,15 +159,25 @@ endSubR 0
 ;no return
 GLOBAL UpdateKeyboard
 UpdateKeyboard:
-	startSubR
-		in al,0x60
-		mov [lastScan],al
+startSubR
+		in al,0x64								;al= buffer status
+		test al,0x2								;ver bit 1 del status para garantizar un in
+		jnz .end
+		in al,0x60								;al= scan
+		mov [lastScan],al						;actualizamos lastScan
 ;	<<	control 
 		SetFlags al, _ctrlScan,_ctrlBit
 		SetFlags al, _altScan,_altBit
 		SetFlags al, _shiftLScan,_shiftBit
 		SetFlags al, _shiftRScan,_shiftBit
-    	call SetCapsFlag 						;sub-rutina especial para la tecla caps
+    	call SetCapsFlag 						;subrutina especial para la tecla caps
+    	mov al,[lastScan]
+    	in al,0x64								;al= buffer status
+    	test al,0x01							;ver bit 0 del status para garantizar un out
+    	jnz .end
+    	xor al,al
+    	out 0x60,al								;limpiamos 0x60
+    	.end:
 endSubR 0 
 
 
@@ -188,7 +188,7 @@ endSubR 0
 GLOBAL getChar
 getChar:
 	startSubR
-    	mov eax,[lastScan] 	;recupero el valor del scan
+    	mov al,[lastScan] 	;recupero el valor del scan
 ;		rectificacion de rango de scan down
     	cmp al,0x53			
     	ja .exit 			;exit
@@ -225,7 +225,7 @@ getChar:
 	.end:
 		xor eax,eax
     	add ebx,edx			; el valor ebx =keys + index +2  ... ahora sumado con 0 o 1 si es Upper
-		mov ax,[ebx]		;return
+		mov al,[ebx]		;return
 endSubR 0
 	.exit:
 	xor eax,eax
@@ -234,10 +234,30 @@ endSubR 0
 ;call:
 ;push dword ASCII 
 ;call isLetterChar
-;return in ah
+;return in eax
 GLOBAL isLetterChar
 isLetterChar:
 	startSubR
   		mov edx,[ebp + 4]
 		inRange 0x61,0x7a,edx
 endSubR 4 
+
+
+;Determina si una tecla esta presionada o no
+;call:
+;push word scan
+;call getKey
+;return in eax
+GLOBAL getKey
+getKey:
+startSubR
+	mov ax,[ebp+4]				;se accede a la tecla que se quiere comprobar
+	mov ebx,lastScan 			
+	cmp ax,[ebx]				;es la ultima que se presiono?
+	jne .ne						;si no lo es, entonces salta
+	mov eax, 1					;si lo es, guarda en ax que se presiono una tecla
+	jmp .end  					;y termina
+	.ne:						;si no lo es
+	xor eax, eax				;pone en ax 0
+	.end:
+endSubR 2

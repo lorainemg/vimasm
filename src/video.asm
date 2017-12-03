@@ -1,5 +1,5 @@
 %include "video.mac"
-
+%include "tools.mac"
 ; Frame buffer location
 %define FBUFFER 0xB8000
 
@@ -16,24 +16,33 @@
 
 section .text
 
-; clear(byte char, byte attrs)
-; Clear the screen by filling it with char and attributes.
-global clear
-clear:
-  mov ax, [esp + 4] ; char, attrs
-  mov edi, FBUFFER
-  mov ecx, COLS * ROWS
-  cld
-  rep stosw
-  ret
+extern text
+extern cursor
 
+;call:
+;push ASCII address
+;push FORMAT address
+;call 
+global UpdateBuffer
+UpdateBuffer:
+startSubR
+mov edi ,FBUFFER  ;edi = buffer
+mov esi ,text ;esi = text
+mov ecx ,2000     ;filas*culumnas
+cld               ;df =0
+mov ax,0x0f00
+.loop:            ;ciclo 
+lodsb             ;eax = actual linea del text
+;mov al,[text]
+;mov [FBUFFER],ax
+stosw             ; movemos al buffer el Format + ASCII
+loop .loop        ;volver 
 
-; putc(char chr, byte color, byte r, byte c)
-;      4         5           6       7
-global putc
-putc:
-    ; calc famebuffer offset 2 * (r * COLS + c)
-    FBOFFSET [esp + 6], [esp + 7]
+mov eax,[cursor]
+shl eax,1
+mov dx, 0Xf0
+mov dl,[FBUFFER + eax]
+;mov dh,0xf0
+mov [FBUFFER + eax],dx
 
-    mov bx, [esp + 4]
-    mov [FBUFFER + eax], bx
+endSubR 0

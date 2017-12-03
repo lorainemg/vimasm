@@ -1,43 +1,31 @@
 %include "video.mac"
-%include "keyboard.mac"
+%include "keys.mac"
 section .data
 current dw 0
 section .text
 
-extern clear
+
+extern text.move
+extern getKey
+extern text
+extern cursor
 extern getChar
 extern calibrate
 extern UpdateKeyboard
-; Bind a key to a procedure
-%macro bind 2
-  cmp byte [esp], %1
-  jne %%next
-  call %2
-  %%next:
-%endmacro
-
-; Fill the screen with the given background color
-%macro FILL_SCREEN 1
-  push word %1
-  call clear
-  add esp, 2
-%endmacro
+extern text.write
+extern UpdateBuffer
 
 global game
-game:
-  ; Initialize game
-
-  FILL_SCREEN BG.BLACK
+game: ; Initialize game
 
   ; Calibrate the timing
-  call calibrate
-
-  ; Snakasm main loop
+   call calibrate
+  
   game.loop:
     .input:
       call UpdateKeyboard
       call get_input
-
+      call UpdateBuffer
     ; Main loop.
 
     ; Here is where you will place your game logic.
@@ -46,9 +34,27 @@ game:
 
     jmp game.loop
 
-
+;call:
+;call input
 get_input:
-call getChar
-mov ah,0x03
-FILL_SCREEN ax 
+call getChar				;obtiene el caracter de la tecla que se presiono
+cmp ax,0 					;si no se presiona ninguna tecla
+je .end						;entonces se salta hasta el final
+push ax						;se guarda el caracter en la pila como parametro de text.write
+call text.write				;se procede a escribir el caracter en el texto
+jmp .end2					;entonces, se salta hasta el final
+.end:
+;Para probar el backspace:
+push word key.bcksp			;se comprueba si se presiono backspace
+call getKey
+cmp ax,1					;si no se presiono, salta hasta el final
+jne .end2
+
+mov ebx,cursor				;se pone la posicion del cursor en la pila, como posicion a partir de la cual se va a escribir				
+mov eax,[ebx]
+push eax
+sub eax,1					;se decrementa menos uno, porque es donde se va a terminar de borrar
+push eax					
+call text.move				;y se llama para mover el texto
+.end2:
 ret
