@@ -20,9 +20,7 @@ extern text
 extern cursor
 
 ;call:
-;push ASCII address
-;push FORMAT address
-;call 
+;call UpdateBuffer
 global UpdateBuffer
 UpdateBuffer:
 startSubR
@@ -33,16 +31,13 @@ cld               ;df =0
 mov ax,0x0f00
 .loop:            ;ciclo 
 lodsb             ;eax = actual linea del text
-;mov al,[text]
-;mov [FBUFFER],ax
 stosw             ; movemos al buffer el Format + ASCII
 loop .loop        ;volver 
 
 mov eax,[cursor]
 shl eax,1
-mov dx, 0Xf0
 mov dl,[FBUFFER + eax]
-;mov dh,0xf0
+mov dh,0xf0
 mov [FBUFFER + eax],dx
 
 endSubR 0

@@ -25,7 +25,7 @@ game: ; Initialize game
     .input:
       call UpdateKeyboard
       call get_input
-      call UpdateBuffer
+      ;call UpdateBuffer
     ; Main loop.
 
     ; Here is where you will place your game logic.
@@ -40,12 +40,14 @@ get_input:
 call getChar				;obtiene el caracter de la tecla que se presiono
 cmp ax,0 					;si no se presiona ninguna tecla
 je .end						;entonces se salta hasta el final
-push ax						;se guarda el caracter en la pila como parametro de text.write
+push eax					;se guarda el caracter en la pila como parametro de text.write
 call text.write				;se procede a escribir el caracter en el texto
+call UpdateBuffer
 jmp .end2					;entonces, se salta hasta el final
 .end:
 ;Para probar el backspace:
-push word key.bcksp			;se comprueba si se presiono backspace
+mov eax, key.bcksp
+push eax	 				;se comprueba si se presiono backspace
 call getKey
 cmp ax,1					;si no se presiono, salta hasta el final
 jne .end2
@@ -53,8 +55,9 @@ jne .end2
 mov ebx,cursor				;se pone la posicion del cursor en la pila, como posicion a partir de la cual se va a escribir				
 mov eax,[ebx]
 push eax
-sub eax,1					;se decrementa menos uno, porque es donde se va a terminar de borrar
+dec eax				 		;se decrementa menos uno, porque es donde se va a terminar de borrar
 push eax					
 call text.move				;y se llama para mover el texto
+call UpdateBuffer
 .end2:
 ret

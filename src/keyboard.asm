@@ -225,7 +225,7 @@ getChar:
 	.end:
 		xor eax,eax
     	add ebx,edx			; el valor ebx =keys + index +2  ... ahora sumado con 0 o 1 si es Upper
-		mov al,[ebx]		;return
+		mov eax,[ebx]		;return
 endSubR 0
 	.exit:
 	xor eax,eax
@@ -245,7 +245,7 @@ endSubR 4
 
 ;Determina si una tecla esta presionada o no
 ;call:
-;push word scan
+;push dword scan
 ;call getKey
 ;return in eax
 GLOBAL getKey
@@ -260,4 +260,4 @@ startSubR
 	.ne:						;si no lo es
 	xor eax, eax				;pone en ax 0
 	.end:
-endSubR 2
+endSubR 4
