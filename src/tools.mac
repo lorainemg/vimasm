@@ -39,14 +39,18 @@ popf
 
 
 %macro startSubR 0 
-mov ebp,esp
 push ebp
+lea ebp,[esp+4]
 push ebx
 push ecx
 push edx
+push esi
+push edi
 cleanReg
 %endmacro
 %macro endSubR 1
+pop edi
+pop esi
 pop edx
 pop ecx
 pop ebx

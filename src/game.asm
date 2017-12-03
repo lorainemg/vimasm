@@ -1,8 +1,7 @@
 %include "video.mac"
 %include "keys.mac"
 section .data
-current dw 0
-section .text
+
 
 
 extern text.move
@@ -14,7 +13,7 @@ extern calibrate
 extern UpdateKeyboard
 extern text.write
 extern UpdateBuffer
-
+section .text
 global game
 game: ; Initialize game
 
@@ -51,13 +50,16 @@ push eax	 				;se comprueba si se presiono backspace
 call getKey
 cmp ax,1					;si no se presiono, salta hasta el final
 jne .end2
-
-mov ebx,cursor				;se pone la posicion del cursor en la pila, como posicion a partir de la cual se va a escribir				
-mov eax,[ebx]
-push eax
-dec eax				 		;se decrementa menos uno, porque es donde se va a terminar de borrar
-push eax					
+push dword 80
+push dword 0
+push dword 79
+;mov ebx,cursor				;se pone la posicion del cursor en la pila, como posicion a partir de la cual se va a escribir				
+;mov eax,[ebx]
+;push eax
+;dec eax				 		;se decrementa menos uno, porque es donde se va a terminar de borrar
+;push eax					
 call text.move				;y se llama para mover el texto
+;dec word [cursor]  
 call UpdateBuffer
 .end2:
 ret
