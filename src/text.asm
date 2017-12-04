@@ -1,36 +1,56 @@
 %include "tools.mac"
 
+extern UpdateBuffer
 
 section .edata
 	textlength  dw 		65535   ;el tamano del texto
+	;
 section .bss
-global text
-	text	resb 	65535	;donde guardo el texto 
-	lines	resd 	800		;control de lineas :  <comienzo,final> en funcion de bytes del text
+
+	global text
+	text	resb 	65535	;donde guardo el texto
+	lines	resd 	800		;control de lineas :  <comienzo,cantidad> en funcion de bytes del text
 section .data
-global cursor
+
+	global cursor
 	cursor 		dw		0		;la posicion del cursor
+
+	;
+	;lines 		dd 		0
+	;lines times 800	dd		0;0x00500000		
+
 	currentline	dw		0 		;la linea actual
 	lastline 	dw 		0		;la ultima linea que se ha escrito
 
 section .text
 
-extern UpdateBuffer
 
-;<<<<<<  TEXT >>>>>>>>
 
-global text.write
+
+
+
+
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHH TEXT CONTROL HHHHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH 
+
+
 ;call:
 ;push ASCII
 ;call write
 ;no return
+global text.write
 text.write:
 	startSubR
 		mov ebx,text  		;ebx =text
 		add ebx,[cursor]	;ebx = text + cursor
 		mov al,[ebp+4]   	;
 		mov [ebx],al		;[text + cursor] = ASCII
-	    call cursor.fmove 
+	    
+	    call cursor.fmove
+	    
+	    
+	    inc dword [lines]
 	    ;actualizar linea
 		;mover forzado el cursor
 	endSubR 4
@@ -107,45 +127,61 @@ text.move:
 	.end:
 	endSubR 12
 
+
+
+
+
+
+
+
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHH LINE CONTROL HHHHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH 
+
+
+
 ;Recibe una linea y determina en donde empieza la linea y la cantidad de caracteres
-;call:
-;push dword line: ebp + 4
-;call text.lineindex
-;return: ax -> posicion en donde empieza la linea, dx -> cantidad de caracteres
-global text.lineindex
-text.lineindex:
-	push ebp
-	lea ebp, [esp+4]
-	push ebx
-
-	mov ebx, lines	
-	add ebx, [ebp+4]			;indexo lines[line]
-	mov dx, [ebx]
-	add ebx,2
-	mov ax, [ebx]				;pongo en bx la parte baja del registro (la cant de caracteres)
-	
-	pop ebx
-	pop ebp
-	ret 4
-
-;Determina la posicion en donde se acaba una linea (solo haya ceros a la der)
-;call:
-;push dword line: ebp + 4
-;call text.endline
-;return: ax -> posicion donde esta el final de la linea
-global text.endline
-text.enline:
-	startSubR
-		push dword [ebp+4]			;pongo la linea que me piden como parametro
-		call text.lineindex			;llamo a lineindex para obtener, en ax donde empieza la linea y en dx la cantidad de caracteres
-		add ax, dx					;el final de linea seria donde comienza mas la cantidad de caracteres
+	;call:
+	;push dword line: ebp + 4
+	;call text.lineindex
+	;return: ax -> posicion en donde empieza la linea, dx -> cantidad de caracteres
+global text.startline
+text.startline:
+	startSubR	
+	mov eax,[ebp+4]		;muevo a eax la linea		
+	mov dl,4			;muevo 4 a dl para multiplicar y asi obtener el valor de lines[line]
+	mul dl				;multiplico por 4
+	mov ebx,lines	    ;obtengo la referencia
+	add ebx,eax			;indexo
+	mov eax,[ebx+2]		;recupero el valor del indexado,sumo 2 para estar en la perte alta de lines[line], y optener el comienzo de linea
 	endSubR 4
 
+
+
+;Determina la posicion en donde se acaba una linea (solo haya ceros a la der)
+	;call:
+	;push dword line: ebp + 4
+	;call text.endline
+	;return: ax -> posicion donde esta el final de la linea
+global text.endline
+text.endline:
+	startSubR
+	mov eax,[ebp+4]		;muevo a eax la linea		
+	mov dl,4			;muevo 4 a dl para multiplicar y asi obtener el valor de lines[line]
+	mul dl				;multiplico por 4
+	mov ebx,lines	    ;obtengo la referencia
+	add ebx,eax			;indexo
+	mov eax,[ebx]		;recupero valor de cantidad de caracteres
+	add eax,[ebx+2]		;sumo el inicio de linea
+	endSubR 4
+
+
+
 ;Determina la linea que ocupa una posicion determinada
-;call:
-;push dword posicion: ebp + 4
-;call text.line
-;return: eax -> numero de linea
+	;call:
+	;push dword posicion: ebp + 4
+	;call text.line
+	;return: eax -> numero de linea
 global text.line
 text.line:
 	startSubR
@@ -163,26 +199,97 @@ text.line:
 		mov eax, ecx					;guardo en ax la ultima linea que analice, que es en donde esta la posiciom
 	endSubR 4
 
-;;call:
-;;push dword start: ebp +12
-;;push dword end: ebp +8
-;;push dword count: ebp +4
-;global text.rmove
-;text.rmove:
-;	startSubR
-;	mov ecx,0
-;	
-;	.loop:
-;	mov [ebp+12] 
-;	add ebp
-;	push ebp
-;	call text.move 
-;	endSubR 0
-;
-; <<<<<<<< CURSOR >>>>>>>>
-global cursor.move
+
+
+;Crea, si es posible, la linea siguiente a una posicion determinada
+	;call: 
+	;push dword line: ebp + 4
+	;call text.newline
+global text.newline
+text.newline:
+	startSubR
+	
+	endSubR 4
+
+
+
+;elimina, si es posible, la linea determinada
+	;call: 
+	;push dword line: ebp + 4
+	;call text.deleteline
+global text.deleteline
+text.deleteline:
+	startSubR
+	
+	endSubR 4
+
+
+
+;Mueve a partir de linea determinada todo el texto 
+	;call: 
+	;push dword count: ebp + 8
+	;push dword line: ebp + 4
+	;call text.newline
+global text.skipline
+text.skipline:
+	startSubR
+		   					
+	push dword [lastline]	;push a la ultima linea para asi tener el valor de la linea mas abajo qe he creado y mover sin solapar
+	call text.endline		;eax = final de la ultima linea
+	mov edx,eax  			;guardo en edx el valor para reusar
+	
+
+	push dword [ebp+4]  	;push a la linea desde la cual se quiere hacer el skip, para obtener el valor de donde comienza
+	call text.startline		;eax = inciode la linea deseada
+	mov ecx,eax 			;guardo en ecx el valor para reusar
+
+	mov eax,80				;cantidad de una linea
+	mul byte [ebp+8]		;multiplico por la cantidad a mover, esto es: cuantas lineas quieres que mueva? 
+	push  eax				;count 				
+	push  ecx				;start
+	push  edx				;end
+	call text.move			;muevo el text 
+
+	;se! que se movio bien y que todos los metodos usados funcionaron
+
+	;mov ecx,[ebp + 8];[lastline]
+	;;sub ecx,[ebp+4]			; ecx = lastline - line = cantidad de lineas movidas
+	;
+	;mov eax,[ebp+4]
+	;mov ebx,lines	
+	;add ebx,eax				;donde empiezo a actualizar
+
+	;mov edi,ebx				
+	;mov esi,ebx
+
+	;mov eax,80
+	;mul word [ebp+8]
+	;mov edx,eax
+	;.lp:
+
+	;lodsw 					;esto es para mover los punteros en 2 
+	;stosw 					
+
+	;lodsw 					;guardo el valor del comienzo
+	;add ax,dx				;modifico con la cantidad q movi
+	;stosw 					;vuelvo a poner el valor en su sitio
+
+	;loop .lp
+
+	endSubR 8
+
+
+
+
+
+
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHH CURSOR CONTROL HHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH 
+
 ;call: 
 ;call cursor.move
+global cursor.move
 cursor.move:
 	startSubR						
 		call cursor.canmove			;determina si se puede mover el cursor o no

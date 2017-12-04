@@ -26,10 +26,6 @@
 
 
 
-
-
-
-
 section .edata 
  ;          	|SCAN CODE|   	|  ASCII   |  
  ;    			down   	up 		char	shift 
@@ -125,15 +121,19 @@ section .edata
 	%define _capsBit 	1000b
 	%define _capsBit2	0x10
 
+
 section .data
 	keyflags 	db 0 ;control flag var 
    	lastScan 	db 0
 
+
 section .text
 
 
-;call:
-;call cashcaps
+
+;controla el estado de capslock
+	;call:
+	;call cashcaps
 SetCapsFlag:
 	startSubR
 		mov al,[lastScan]
@@ -155,11 +155,10 @@ SetCapsFlag:
 endSubR 0
 
 
-
 ;Esta sub-rutina actualiza el valor del teclado, activado y desactivando flags de control y la ultima tecla  
-;call:
-;call UpdateKeyboard
-;no return
+	;call:
+	;call UpdateKeyboard
+	;no return
 GLOBAL UpdateKeyboard
 UpdateKeyboard:
 	startSubR
@@ -184,10 +183,10 @@ UpdateKeyboard:
 endSubR 0 
 
 
-
-;call:
-;call getChar
-;return: valor ASCII de la tecla presionada
+;Comvierte la ultima tecla presionada en un 
+	;call:
+	;call getChar
+	;return: valor ASCII de la tecla presionada
 GLOBAL getChar
 getChar:
 	startSubR
@@ -237,11 +236,11 @@ getChar:
 endSubR 0
 
 
-
-;call:
-;push dword ASCII 
-;call isLetterChar
-;return in eax
+;determina si un ASCII es un caracter del alfabeto literal
+	;call:
+	;push dword ASCII 
+	;call isLetterChar
+	;return in eax
 GLOBAL isLetterChar
 isLetterChar:
 	startSubR
@@ -250,10 +249,10 @@ isLetterChar:
 endSubR 4 
 
 
-
-;call
-;push dword control scan
-;call isControl
+;determina si una tecla de control esta activada
+	;call
+	;push dword control scan
+	;call isControl
 GLOBAL isControl
 isControl: 
 	startSubR
@@ -292,12 +291,11 @@ isControl:
 endSubR 4
 
 
-
 ;Determina si una non-control tecla esta presionada o no
-;call:
-;push dword non-control-scan
-;call isKey1
-;return in eax
+	;call:
+	;push dword non-control-scan
+	;call isKey1
+	;return in eax
 GLOBAL isKey1
 isKey1:
 startSubR
@@ -313,13 +311,12 @@ startSubR
 endSubR 4
 
 
-
 ;Determina si dos tecla [ control + non-control ] estan presionadas
-;call:
-;push dword control-scan: ebp+8
-;push dword non-contrl-scan: ebp +4
-;call isKey2
-;return in eax
+	;call:isControl: 
+	;push dword control-scan: ebp+8
+	;push dword non-contrl-scan: ebp +4
+	;call isKey2
+	;return in eax
 GLOBAL isKey2
 isKey2:
 	startSubR
@@ -332,14 +329,13 @@ isKey2:
 endSubR 8
 
 
-
 ;Determina si las teclas : [ control + control +  non-control ] estan presionadas
-;call:
-;push dword control-scan: ebp+12
-;push dword control-scan: ebp+8
-;push dword non-contrl-scan: ebp +4
-;call isKey2
-;return in eax
+	;call:
+	;push dword control-scan: ebp+12
+	;push dword control-scan: ebp+8
+	;push dword non-contrl-scan: ebp +4
+	;call isKey2
+	;return in eax
 GLOBAL isKey3
 isKey3:
 	startSubR

@@ -3,7 +3,7 @@
 section .data
 
 
-
+extern text.skipline
 extern text.move
 extern isKey1,isKey2,isKey3
 extern text
@@ -45,25 +45,22 @@ call UpdateBuffer
 jmp .end2					;entonces, se salta hasta el final
 .end:
 ;Para probar el backspace:
-mov eax,key.shiftL
-push eax
-mov eax,key.ctrl
-push eax
+
 mov eax, key.backspace
 push eax	 				;se comprueba si se presiono backspace
 
-call isKey3
+call isKey1
 cmp ax,1					;si no se presiono, salta hasta el final
 jne .end2
-push dword 80
+push dword 1
 push dword 0
-push dword 79
+;push dword 79
 ;mov ebx,cursor				;se pone la posicion del cursor en la pila, como posicion a partir de la cual se va a escribir				
 ;mov eax,[ebx]
 ;push eax
 ;dec eax				 		;se decrementa menos uno, porque es donde se va a terminar de borrar
 ;push eax					
-call text.move				;y se llama para mover el texto
+call text.skipline				;y se llama para mover el texto
 ;dec word [cursor]  
 call UpdateBuffer
 .end2:
