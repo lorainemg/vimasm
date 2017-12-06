@@ -38,7 +38,7 @@ text.startConfig:
 		mov byte [text],' '
 
 	; section .bss:
-		mov word [lines+2],1 		;valor inicial del texto 
+;		mov word [lines+2],0 		;valor inicial del texto 
 
 		lea edi,[lines+6] 		;para moverme desde el segundo comienzo hasta el proximo
 		lea esi,[lines+6]		;eso de arriba
@@ -71,7 +71,7 @@ text.write:
 	    
 	    inc word [cursor]
 	    inc word [lines]
-	    
+	   	.cont:
 	    inc ebx
 	    mov [ebx], byte ' ' 
 	    ;actualizar linea
@@ -413,10 +413,9 @@ cursor.canmoveH:
 		mov ebx,[cursor]	;ebx = text + cursor
 		add ebx, [ebp+4]	;simula el movimiento 
 
-	  	
 		push dword [currentline]	;pongo la linea actual como parametro
 		call text.startline			;busco el principio de la linea
-		;mov eax, 0
+	  	break
 	  	cmp ebx, eax				;comparo donde me quiero mover con el principio de la linea 
 	    jb .no						;si la poscion a la que me voy a mover es menor, entonces se sale de la linea actual y no me muevo
 		
@@ -428,7 +427,7 @@ cursor.canmoveH:
 	  	
 	  	mov eax, 1					;por el contrario, el cursor se puede mover
 	  	jmp .end 					;salta hacia el final
-	  	.no:
+	  	.no:	  	
 	  	xor eax, eax				;en caso de que no pueda mover el cursor, entonces pongo 0 en eax
 	  	.end:
 	endSubR 4

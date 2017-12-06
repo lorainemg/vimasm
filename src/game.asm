@@ -18,7 +18,7 @@ extern cursor
 
 extern isKey1,isKey2,isKey3
 extern UpdateKeyboard,getChar
-extern checkKeyboardStatus
+extern mode.insert
 
 extern cursor.moveH
 extern cursor.moveV
@@ -51,7 +51,7 @@ game: ; Initialize game
 ;call:
 ;call input
 get_input:
-call checkKeyboardStatus
+call mode.insert
 
 ; call getChar				;obtiene el caracter de la tecla que se presiono 
 ; cmp ax,0 					;si no se presiona ninguna tecla

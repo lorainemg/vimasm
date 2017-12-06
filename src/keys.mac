@@ -1,19 +1,49 @@
-
 %ifndef keys
 %define keys
-
+;Teclas de movimiento:
 %define key.up    		0x48
 %define key.down  		0x50
 %define key.left  		0x4b
 %define key.right 		0x4d
 %define key.enter 		0x1c
-%define key.esc   		0x01
-%define key.backspace 	0x0e
+%define key.space   	0x39
 %define key.tab   		0x0f
+%define key.backspace 	0x0e
+;Teclas de control:
+%define key.esc   		0x01
 %define key.ctrl  		0x9d1d
 %define key.shiftL 		0xaa2a
 %define key.shiftR	 	0xb636
 %define key.alt   		0xb838
-%define key.space   	0x39
 %define key.capslock 	0xba3a
+;Tecla indefinida:
+%define key.point    0x34
+;Teclas de letras:
+%define key.q     0x10
+%define key.w     0x11
+%define key.e     0x12
+%define key.r     0x13
+%define key.t     0x14
+%define key.y     0x15
+%define key.u     0x16
+%define key.i     0x17
+%define key.o     0x18
+%define key.p     0x19
+%define key.a     0x1E   
+%define key.s     0x1F
+%define key.d     0x20
+%define key.f     0x21
+%define key.g     0x22
+%define key.h     0x23
+%define key.j     0x24
+%define key.k     0x25
+%define key.l     0x26
+%define key.z     0x2C
+%define key.x     0x2D
+%define key.c     0x2E
+%define key.v     0x2F
+%define key.b     0x30
+%define key.n     0x31
+%define key.m     0x32
+
 %endif ; keyboard_mac
