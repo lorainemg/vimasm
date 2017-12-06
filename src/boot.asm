@@ -5,7 +5,7 @@ section .bss
 stack resb stack.SIZE
 
 section .text
-extern game
+extern vim.start
 ; Set up stack pointers, initialize the FPU and jump to main.
 global boot
 boot:
@@ -21,7 +21,7 @@ boot:
   mov al, 0xFF
   out dx, al
 
-  jmp game
+  jmp vim.start
 
 ; Divide by zero to cause a triple fault and reset.
 global reset
