@@ -58,13 +58,22 @@ pop ebp
 ret %1
 %endmacro
 
+
 ;parte el programa en dos, asi veo, en el reporte de error, los valores de todos los registros del sistema de manera inducida!!!
 %macro break 0
-mov ecx,100
-%%.l
+
 push dword 0x21fc0039
-loop %%.l
+push dword 0x21fc0039
+push dword 0x21fc0039
+push dword 0x21fc0039
+push dword 0x21fc0039
+push dword 0x21fc0039
+push dword 0x21fc0039
 ret 
+%endmacro
+
+%macro cleanHReg 1
+and %1,0x0000ffff
 %endmacro
 
 ;Comprueba si se presiono una tecla, y si se hizo, intonces salta para la etiqueta especificada
