@@ -130,7 +130,6 @@ section .data
 section .text
 
 
-
 ;controla el estado de capslock
 	;call:
 	;call cashcaps
