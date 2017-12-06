@@ -3,6 +3,15 @@
 %include "tools.mac"
 section .data
 
+%macro checkKey 2
+  mov eax, %1             ;pone en eax la tecla 
+  push eax              ;pasa el codigo scan de la tecla como parametro
+  call isKey1             ;llama para comprobar si se presiono la tecla
+  cmp eax, 1              ;si se presiono
+  je %2               ;entonces salta para la etiqueta especificada
+%endmacro
+
+
 extern text.startConfig
 extern text,text.skipline,text.move,text.write
 extern cursor
@@ -11,6 +20,8 @@ extern isKey1,isKey2,isKey3
 extern UpdateKeyboard,getChar
 extern checkKeyboardStatus
 
+extern cursor.moveH
+extern cursor.moveV
 extern calibrate
 
 
@@ -41,6 +52,7 @@ game: ; Initialize game
 ;call input
 get_input:
 call checkKeyboardStatus
+
 ; call getChar				;obtiene el caracter de la tecla que se presiono 
 ; cmp ax,0 					;si no se presiona ninguna tecla
 ; je .end						;entonces se salta hasta el final

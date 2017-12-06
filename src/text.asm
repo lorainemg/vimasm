@@ -20,6 +20,7 @@ section .data
 	
 	currentline	dw		0 		;la linea actual
 	lastline 	dw 		0		;la ultima linea que se ha escrito
+	moveV		dw 		0		;el ultimo movimiento vertical
 
 section .text
 
@@ -68,9 +69,11 @@ text.write:
 		mov al,[ebp+4]   	;
 		mov [ebx],al		;[text + cursor] = ASCII
 	    
-	    call cursor.fmove
+	    inc word [cursor]
 	    inc word [lines]
 	    
+	    inc ebx
+	    mov [ebx], byte ' ' 
 	    ;actualizar linea
 		;mover forzado el cursor
 	endSubR 4
@@ -146,9 +149,6 @@ text.move:
 		rep	stosb 	
 	.end:
 	endSubR 12
-
-
-
 
 
 
@@ -384,47 +384,142 @@ endSubR 8
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHH CURSOR CONTROL HHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH 
+;call
+;push dword dir (1 abajo 0 -1 arriba: ebp + 4
+;call cursor.canmoveV
+;return: eax -> 0 o 1 si se puede mover o no
+cursor.canmoveV:
+	startSubR
+		mov dx, [currentline]		;edx = linea actual
+		add edx, [ebp+4]			;edx = linea actual + posicion a la que se mueve
 
-;call: 
-;call cursor.move
-global cursor.move
-cursor.move:
-	startSubR						
-		call cursor.canmove			;determina si se puede mover el cursor o no
-		cmp al,0					;se puede mover?
-		jz .end 					;si no se puede mover, finaliza
-		add word [cursor],1			;por el contrario mueve el cursor
+		cmp edx, 0					;es la pos hacia la que se va a mover menor que 0?
+		jl .no 						;si lo es, entonces no se puede mover
+		cmp edx, 2 ;[lastline]		;es la pos mayor que la ultima linea?
+		jg .no 						;si lo es, entonces no se puede mover
+		mov eax, 1					;sino, se puede mover
+		jmp .end 					;en caso contrario se puede mover
+		.no:						;para cuando no se pueda mover
+		xor eax, eax				;pone en eax 0
 		.end:
-	endSubR 0
+	endSubR 4
 
+;call
+;push dword dir (1 derecha 0 -1 izquierda)
+;call cursor.canmoveH
+;return: eax -> 0 o 1 si se puede mover o no
+cursor.canmoveH:
+	startSubR
+		mov ebx,[cursor]	;ebx = text + cursor
+		add ebx, [ebp+4]	;simula el movimiento 
+
+	  	
+		push dword [currentline]	;pongo la linea actual como parametro
+		call text.startline			;busco el principio de la linea
+		;mov eax, 0
+	  	cmp ebx, eax				;comparo donde me quiero mover con el principio de la linea 
+	    jb .no						;si la poscion a la que me voy a mover es menor, entonces se sale de la linea actual y no me muevo
+		
+		push dword[currentline]	 	;pongo la linea actual como parametro
+		call text.endline 			;busco el final de la linea
+		;mov eax, 170
+	  	cmp ebx, eax				;se compara la posicion con el final de linea
+	  	ja .no						;si es mayor, entonces no hay movimiento
+	  	
+	  	mov eax, 1					;por el contrario, el cursor se puede mover
+	  	jmp .end 					;salta hacia el final
+	  	.no:
+	  	xor eax, eax				;en caso de que no pueda mover el cursor, entonces pongo 0 en eax
+	  	.end:
+	endSubR 4
 
 ;call:
-;call cursor.fmove
-cursor.fmove:					;fuerza el movimiento del cursor
+;push dword dir (1 derecha o -1 izquierda): ebp + 4
+;call cursor.moveH
+global cursor.moveH
+cursor.moveH:
 	startSubR
-		call cursor.canmove			;pregunta si se puede mover el cursor
-		cmp al,0					;se puede mover?
-		jz .z 						;si no, entonces salta 
-		call cursor.move			;si si, llama a mover el cursor
-		jmp .end 					;y finaliza
-		.z:
-		add word [cursor],1			;procede a mover el cursor
+		push dword[ebp+4]			;guardo en la pila la direccion como parametro
+		call cursor.canmoveH		;pregunto si me puedo mover hacia esa direccion
+		cmp eax, 0				    ;me puedo mover?
+		je .end 					;si no me puedo mover, entonces no hago nada
+
+		mov byte[moveV], 0			;si se movio horizontal, entonces el valor anterior del desplazamiento vertical se quita
+
+		
+		push dword[currentline]		;pongo la linea actual como parametro
+		call text.endline			;para preguntar por su fin de linea
+		mov ebx, eax				;ebx = fin de linea
+		;mov ebx, 170
+		xor eax, eax				;limpio eax
+		mov ax, [cursor]			;pongo la posicion del cursor	
+		.lp:
+			mov edx, text 			;guardo en edx el texto
+			add ax, [ebp+4]			;adiciono la pos actual + la dir a la que me muevo
+			add edx, eax			;para indexar text[cursor]
+			cmp byte[edx], 0		;si no hay 0 en el texto
+			jne .end1				;si no lo hay, entonces termino
+			cmp ax, bx				;o si la posicion en la que estoy es el final de la linea
+			je .end1				;entonces termino
+			jmp .lp					;sino, continuo
+		.end1:
+		mov [cursor], ax			;pongo el cursor en la posicion calculada
 		.end:
-	endSubR 0
+	endSubR 4
 
+;call:
+;push dword dir (1 abajo o -1 arriba): ebp + 4
+;call cursor.
 
-;call: 
-;call cursor.canmove
-;return: in al 1 si se puede mover, 0 si no
-cursor.canmove:
+global cursor.moveV
+cursor.moveV:
 	startSubR
-		mov ebx,text     			;se mueve el texto para indexar
-		add ebx,[cursor]			;se indexa como text[cursor+1] y se guarda en ebx
-		inc ebx
-		;lea ebx, [ebx+cursor+1]
-		mov al,[ebx]				;se mueve en al lo que hay en el texto indexado
-		cmp al,0					;si es cero, entonces se esta en la ultima posicion del texto y no se puede seguir moviendo
-		jz .end  					;asi que se salta hasta el final, dejando en al cero
-		mov al,1					;sino se pone en al 1
+		push dword[ebp+4]			;pongo como parametro la direccion a la que me voy a mover
+		call cursor.canmoveV		;pregunto si me puedo mover a la direccion dada
+		cmp eax, 0					;me puedo mover?
+		je .end 					;si no, entonces salto para el final
+		;Procedo a mover el cursor:
+		push dword[currentline]		;guardo la linea actual como parametro
+		call text.startline			;y pregunto por su inicio de linea
+		;mov eax, 0
+		
+		mov edx, [cursor]			;edx = cursor
+		sub edx, eax				;resto la posicion del cursor menos el principio, para calcular la cantidad que se quiere mover
+
+		cmp byte[moveV], 0			;el valor del movimiento horizontal esta actualizado?
+		je .continue				;de no estarlo, continuo
+		xor edx, edx				
+		mov dl, [moveV]				;sino cambio el valor de la cantidad que se quiere mover
+		.continue:
+		push edx					;guardo cuanto se quiere mover en pila
+
+		mov bx, [currentline]		;ebx = linea actual
+		add ebx, [ebp+4]			;linea actual += 1 0 -1 dependiendo de hacia donde se mueve, para obtener la linea a la que me voy a mover 
+		mov [currentline], ebx		;cambio la posicion de mi linea actual
+
+		push ebx					;pongo la linea a la que me voy a mover como parametro
+		call text.startline			;tengo en eax el principio de linea
+		;mov eax, 80
+
+		mov edx, [esp]				;busca en el tope de la pila cuanto se tiene que mover
+		add edx, eax				;edx = principio de la linea + cantidad que se va a mover
+		mov [cursor], edx			;se pone el cursor en la posicion calculada
+		mov edx, eax				;guardo el principio de la linea
+		 
+		push ebx					;pongo la linea a la que me voy a mover como parametro
+		call text.endline			;busco el final de esa linea
+		;mov eax, 88
+		sub eax, edx				;resto el final de linea menos el principio, para obtener la cant de caracteres
+
+		pop ebx						;se recupera cuanto se quiere mover
+		cmp eax, ebx 				;es la cantidad de caracteres de la linea mayor que lo que se quiere mover?
+		ja .end 					;si lo es, entonces no se hace mas nada
+		add eax, edx				;si no adiciono el principio con la cantidad de caracteres, para obtener el final de linea
+		mov [cursor], eax			;pongo el cursor en el final de la linea
+		mov al, [moveV]				;copio el valor del ultimo movimiento vertical
+		cmp al, 0					;el valor esta actualizado?
+		jne .end 					;si no lo esta, entonces finalizo
+		mov [moveV], bl  			;sino, cambio su valor
 		.end:
-	endSubR 0
+	endSubR 4
+
