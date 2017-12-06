@@ -130,7 +130,6 @@ section .data
 section .text
 
 
-
 ;controla el estado de capslock
 	;call:
 	;call cashcaps
@@ -161,7 +160,7 @@ endSubR 0
 	;no return
 GLOBAL UpdateKeyboard
 UpdateKeyboard:
-	startSubR
+	startSubR 0000 0010
 		in al,0x64								;al= buffer status
 		test al,0x2								;ver bit 1 del status para garantizar un in
 		jnz .end
@@ -175,7 +174,7 @@ UpdateKeyboard:
     	call SetCapsFlag 						;subrutina especial para la tecla caps
     	mov al,[lastScan]
     	in al,0x64								;al= buffer status
-    	test al,0x01							;ver bit 0 del status para garantizar un out
+    	test al,0x0q8							;ver bit 0 del status para garantizar un out
     	jnz .end
     	xor al,al
     	out 0x60,al								;limpiamos 0x60

@@ -3,23 +3,24 @@
 extern UpdateBuffer
 
 section .edata
-	textlength  dw 		65535   ;el tamano del texto
-	;
+	
+	text.length  dw 		65535   				;el tamano del texto
+
 section .bss
 
 	global text
-	text	resb 	65535	;donde guardo el texto
-	lines	resd 	800		;control de lineas :  <comienzo,cantidad> en funcion de bytes del text
+	text	resb 	65535						;donde guardo el texto
+	
+	lines	resd 	800							;control de lineas :  <comienzo,cantidad> en funcion de bytes del text
 section .data
+	
 
 	global cursor
-	cursor 		dw		0		;la posicion del cursor
-
-	;
-	;lines 		dd 		0
-	;lines times 800	dd		0;0x00500000		
-
+	cursor 		dw		0			;la posicion del cursor
+	
 	currentline	dw		0 		;la linea actual
+
+	global lastline
 	lastline 	dw 		0		;la ultima linea que se ha escrito
 
 section .text
@@ -27,6 +28,19 @@ section .text
 
 
 
+
+
+
+global text.startConfig
+text.startConfig:
+	startSubR
+		
+	; section .data:
+		mov byte [text],' '
+
+	; section .bss:
+		mov word [lines],1 		;valor inicial del texto 
+	endSubR 0
 
 
 
@@ -48,9 +62,8 @@ text.write:
 		mov [ebx],al		;[text + cursor] = ASCII
 	    
 	    call cursor.fmove
+	    inc word [lines]
 	    
-	    
-	    inc dword [lines]
 	    ;actualizar linea
 		;mover forzado el cursor
 	endSubR 4
@@ -76,7 +89,7 @@ text.move:
 		mov eax,[ebp+12]
 
 		;<<<<<<truncar!
- 		mov edx,textlength
+ 		mov edx,text.length
  		sub edx,[ebp+4]
 		cmp eax,edx
 		jb .tR
@@ -149,11 +162,12 @@ global text.startline
 text.startline:
 	startSubR	
 	mov eax,[ebp+4]		;muevo a eax la linea		
-	mov dl,4			;muevo 4 a dl para multiplicar y asi obtener el valor de lines[line]
-	mul dl				;multiplico por 4
+	mov edx,4			;muevo 4 a dl para multiplicar y asi obtener el valor de lines[line]
+	mul edx				;multiplico por 4
 	mov ebx,lines	    ;obtengo la referencia
 	add ebx,eax			;indexo
-	mov eax,[ebx+2]		;recupero el valor del indexado,sumo 2 para estar en la perte alta de lines[line], y optener el comienzo de linea
+	xor eax,eax
+	mov ax,[ebx+2]		;recupero el valor del indexado,sumo 2 para estar en la perte alta de lines[line], y optener el comienzo de linea
 	endSubR 4
 
 
@@ -171,8 +185,9 @@ text.endline:
 	mul dl				;multiplico por 4
 	mov ebx,lines	    ;obtengo la referencia
 	add ebx,eax			;indexo
-	mov eax,[ebx]		;recupero valor de cantidad de caracteres
-	add eax,[ebx+2]		;sumo el inicio de linea
+	xor eax,eax
+	mov ax,[ebx]		;recupero valor de cantidad de caracteres
+	add ax,[ebx+2]		;sumo el inicio de linea
 	endSubR 4
 
 
@@ -185,30 +200,71 @@ text.endline:
 global text.line
 text.line:
 	startSubR
-		mov ecx, [lastline]				;guardo un contador de las lineas que voy a analinzar
+		mov edx, [lastline]				;guardo un contador de las lineas que voy a analinzar
 		;mov ebx, lines	
 		.lp:
-			mov eax, [lines+4*ecx]
+			mov eax, [lines+2+4*edx]
 			cmp eax, [ebp+4]
 			jb .end
 
-			dec ecx
-			cmp ecx, 0
+			dec edx
+			cmp edx, 0
 			jae .lp
 		.end:
-		mov eax, ecx					;guardo en ax la ultima linea que analice, que es en donde esta la posiciom
+		mov eax, edx					;guardo en ax la ultima linea que analice, que es en donde esta la posiciom
 	endSubR 4
 
 
 
-;Crea, si es posible, la linea siguiente a una posicion determinada
+;Crea, si es posible, la linea en una posicion determinada
 	;call: 
 	;push dword line: ebp + 4
 	;call text.newline
 global text.newline
 text.newline:
 	startSubR
+
+
 	
+
+		push dword [ebp+4]
+		call text.startline
+		mov edx,eax					;salvo el valor de el comienzo de la linea dada
+
+
+
+		push dword 1
+		push dword [ebp+4]
+		call text.skipline			;muevo el bloque de lineas
+
+		
+		
+		;rectifico si la linea a crear es, a lo sumo, inmediata a la ultima creada
+		mov ax,[lastline]
+		inc ax
+		cmp ax,[ebp+4]
+		jb .end       				;si: line > lastline+1 => no tiene sentido alguno crearla
+		je .create					;si: line == lastline+1, me salto el corrimiento de lineaso
+		
+
+		;veo si la linea a crear 
+		xor ecx,ecx
+		mov cx,[lastline]
+		sub ecx,[ebp+4]			 	;ecx = cantidad de lineas que tuve que mover un fila para crear esta
+
+
+
+
+		lea edi,[lines + eax + 4]
+		lea esi,[lines + eax]
+		std
+		rep movsd 					;muevo desde abajo hasta arriba los valores de las lineas
+
+		.create:
+		mov eax,[ebp+4]
+		mov [lines+4*eax+2],dx
+		inc word [lastline]
+		.end:
 	endSubR 4
 
 
@@ -221,11 +277,15 @@ global text.deleteline
 text.deleteline:
 	startSubR
 	
+
+
+
+
 	endSubR 4
 
 
 
-;Mueve a partir de linea determinada todo el texto 
+;Mueve a partir de linea determinada (diferente de zero) todo el texto 
 	;call: 
 	;push dword count: ebp + 8
 	;push dword line: ebp + 4
@@ -233,50 +293,120 @@ text.deleteline:
 global text.skipline
 text.skipline:
 	startSubR
-		   					
-	push dword [lastline]	;push a la ultima linea para asi tener el valor de la linea mas abajo qe he creado y mover sin solapar
-	call text.endline		;eax = final de la ultima linea
-	mov edx,eax  			;guardo en edx el valor para reusar
+		
+		;rectifico si la linea es mayor que la ultima creada, en es caso voy al final
+		mov eax,[ebp+4]
+		cmp ax,[lastline]
+		jg .end
+
+		mov eax,80				;cantidad de una linea
+		imul dword [ebp+8]		;multiplico por la cantidad a mover, esto es: cuantas lineas quieres que mueva? 
+		push  eax				;count 	
 	
+		push dword [ebp+4]  	;push a la linea desde la cual se quiere hacer el skip, para obtener el valor de donde comienza
+		call text.startline		;eax = inciode la linea deseada
+		push eax 				;start
+		
 
-	push dword [ebp+4]  	;push a la linea desde la cual se quiere hacer el skip, para obtener el valor de donde comienza
-	call text.startline		;eax = inciode la linea deseada
-	mov ecx,eax 			;guardo en ecx el valor para reusar
-
-	mov eax,80				;cantidad de una linea
-	mul byte [ebp+8]		;multiplico por la cantidad a mover, esto es: cuantas lineas quieres que mueva? 
-	push  eax				;count 				
-	push  ecx				;start
-	push  edx				;end
-	call text.move			;muevo el text 
+		push dword [lastline]	;push a la ultima linea para asi tener el valor de la linea mas abajo qe he creado y mover sin solapar
+		call text.endline		;eax = final de la ultima linea
+		push eax  				;end 
+		
+		call text.move			;muevo el text 
 
 	;se! que se movio bien y que todos los metodos usados funcionaron
+	;ahora me dispongo a mover los valores de las lineas,  comienzos+80*count
+	
+		
+		mov eax,[ebp+8]			;eax = count*dir	
+		mov edx,80				;muevo a 	eax = 80, para mover los comienzos tantos 80s como lineas queria que saltara
+		imul edx 				;multiplico por count*dir
+		push eax				;en la pila se encuentra el valor por defecto en caso de que no se necesite ningun trunke
+		
+		
 
-	;mov ecx,[ebp + 8];[lastline]
-	;;sub ecx,[ebp+4]			; ecx = lastline - line = cantidad de lineas movidas
-	;
-	;mov eax,[ebp+4]
-	;mov ebx,lines	
-	;add ebx,eax				;donde empiezo a actualizar
+		mov eax,[ebp+8]
+		cmp eax,0				;veo como es el valor de count con respecto a zero
+ 		jl .lz
+ 		jg .gz
 
-	;mov edi,ebx				
-	;mov esi,ebx
+ 		pop eax
+ 		je .end
 
-	;mov eax,80
-	;mul word [ebp+8]
-	;mov edx,eax
-	;.lp:
+	.gz:						;en caso que sea mayor que zero		
+		push dword [lastline]	;guardo en pila el valor de [lastline], esto es para calcular la ultima fila escrita en toda la matriz del texto
+		call text.endline		;calculo donde termina la ultima linea
+		mov dl,80				;divido entre 80, si el resto es zero este es el valor de la ultima fila, sino, es ax+1,esto ultimo no no hare ahora
+		div dl	
+		mov edx,800				;cantidad de lineas
+		sub edx,eax				;esto es: la cantidad de filas menos la ultima, osea, la cantidad que tengo disponible
+		mov eax,[ebp+8]			;lo muevo a eax : eax = count
+		cmp eax,edx				;veo como es el count en comparacion con la cantidad posible
+		jbe .ready 				;si es menor, entonces puedo hacer el skip , sino
+		
+		pop eax					;quito de la pila el valor 
+		mov eax,80				;muevo a 	eax = 80, para mover los comienzos tantos 80s como lineas queria que saltara
+		mul dx					;multiplico por valor disponible para saltar
+		push eax				;en la pila se encuentra el valor por defecto en caso de que no se necesite ningun trunke
+		jmp .ready
 
-	;lodsw 					;esto es para mover los punteros en 2 
-	;stosw 					
+	.lz:
 
-	;lodsw 					;guardo el valor del comienzo
-	;add ax,dx				;modifico con la cantidad q movi
-	;stosw 					;vuelvo a poner el valor en su sitio
+		
 
-	;loop .lp
+		push dword [ebp+4]		;edx = linea a mover
+		call text.startline		;pregunto por el valor inicial de la linea
+		mov dl,80				;para ver la fila exacta donde empieza
+		div dl		
+		mov edx,eax				;edx = fila donde empieza la linea a subir
+		
+		push edx				;salvo valor en la pila, el valor de la fila
 
-	endSubR 8
+		mov eax,[ebp+8]			;lo muevo a eax : eax = count
+		neg eax				
+
+		pop edx					;recupero valor de la pila 
+
+		cmp ax,dx				;veo como es el count en comparacion con la cantidad posible
+		jbe .ready 				;si es menor, entonces puedo hacer el skip , sino
+		
+		pop eax					;quito de la pila el valor (inicial)
+		
+		xor eax,eax
+		mov ax,80				;muevo a 	eax = 80, para mover los comienzos tantos 80s como lineas queria que saltara
+		mul dx					;multiplico por valor disponible para saltar
+		neg eax
+
+		push eax				;en la pila se encuentra el valor por defecto en caso de que no se necesite ningun trunke
+		jmp .ready
+	
+
+	.ready:
+	
+		mov eax,[ebp+4]			;eax = linea cambiada
+		mov dl,4				;factor indexador
+		mul dl					;multiplico: eax = line*4
+		
+		lea edi,[lines +eax +2]	;muevo a 	edi = lines[] 
+		lea esi,[lines +eax +2]	;muevo a  	esi = lines[]
+
+
+		mov ecx,[lastline]
+		sub ecx,[ebp+4]		 	;guardo en ecx el valor 		
+		inc ecx
+
+		pop edx
+		cld
+		
+	.lp:					
+		lodsd					;guardo el valor del comienzo en eax
+		add ax,dx				;modifico con la cantidad de salto
+		stosd 					;vuelvo a poner el valor en su sitio
+		
+		loop .lp
+	.end:
+
+endSubR 8
 
 
 

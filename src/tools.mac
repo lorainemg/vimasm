@@ -58,3 +58,21 @@ pop ebp
 ret %1
 %endmacro
 %endif
+
+
+;parte el programa en dos, asi veo, en el reporte de error, los valores de todos los registros del sistema de manera inducida!!!
+%macro break 0
+
+push dword 0x21fc0039
+push dword 0x21fc0039
+push dword 0x21fc0039
+push dword 0x21fc0039
+push dword 0x21fc0039
+push dword 0x21fc0039
+push dword 0x21fc0039
+ret 
+%endmacro
+
+%macro cleanHReg 1
+and %1,0x0000ffff
+%endmacro
