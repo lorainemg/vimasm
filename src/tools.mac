@@ -74,58 +74,58 @@ ret %1
 
 	%macro breake 2
 	cmp %1,%2
-	jne 
+	jne %%.end
 	break
-	%%.end
+	%%.end: 
 	%endmacro
 
 	%macro breakne 2
 	cmp %1,%2
-	je 
+	je %%.end
 	break
-	%%.end
+	%%.end:
 	%endmacro
 
 	%macro breakz 2
 	cmp %1,%2
-	jnz 
+	jnz %%.end
 	break
-	%%.end
+	%%.end:
 	%endmacro
 
 	%macro breaknz 2
 	cmp %1,%2
-	jz 
+	jz %%.end
 	break
-	%%.end
+	%%.end:
 	%endmacro
 
 	%macro breakb 2
 	cmp %1,%2
-	jnb 
+	jnb %%.end
 	break
-	%%.end
+	%%.end:
 	%endmacro
 
 	%macro breaka 2
 	cmp %1,%2
-	jna 
+	jna %%.end
 	break
-	%%.end
+	%%.end:
 	%endmacro
 
 	%macro breakl 2
 	cmp %1,%2
-	jnl 
+	jnl %%.end
 	break
-	%%.end
+	%%.end:
 	%endmacro
 
 	%macro breakg 2
 	cmp %1,%2
-	jng 
+	jng %%.end
 	break
-	%%.end
+	%%.end:
 	%endmacro
 
 
