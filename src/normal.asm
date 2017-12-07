@@ -25,7 +25,6 @@ mode.normal:
 	;Controles basicos
 		checkKey1 key.p, .paste					;si se presiono p
 		
-
 	;Cambiar de modo:
 		checkKey1 key.i, .insertmode			;si se presiono i
 		checkKey1 key.v, .visualmode 			;si se presiono v

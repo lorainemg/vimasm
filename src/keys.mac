@@ -1,5 +1,6 @@
 %ifndef keys
 %define keys
+
 ;Teclas de movimiento:
 %define key.up    		0x48
 %define key.down  		0x50
@@ -9,6 +10,7 @@
 %define key.space   	0x39
 %define key.tab   		0x0f
 %define key.backspace 	0x0e
+
 ;Teclas de control:
 %define key.esc   		0x01
 %define key.ctrl  		0x9d1d
@@ -16,8 +18,12 @@
 %define key.shiftR	 	0xb636
 %define key.alt   		0xb838
 %define key.capslock 	0xba3a
+
 ;Tecla indefinida:
-%define key.point    0x34
+%define key.point   0x34
+%define key.4       0x05
+%define key.6       0x07
+
 ;Teclas de letras:
 %define key.q     0x10
 %define key.w     0x11
