@@ -71,6 +71,8 @@ push dword 0x21fc0039
 ret 
 %endmacro
 
+
+
 %macro cleanHReg 1
 and %1,0x0000ffff
 %endmacro

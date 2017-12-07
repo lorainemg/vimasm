@@ -7,12 +7,13 @@
 
 ;text externs
 	extern cursor.moveH, cursor.moveV
-	extern text.write
+	extern text.write,text.newline
+	extern lastline
 	extern text
 
 
 ;main externs
-	extern vim.update
+	extern vim.update,UpdateBuffer
 	
 section .text
 
@@ -27,6 +28,10 @@ mode.insert:
 		push eax					;se guarda el caracter en la pila como parametro de text.write
 		call text.write				;se procede a escribir el caracter en el texto	call UpdateBuffer
 		jmp .end
+
+
+
+
 	.commad:
 
 	;Para comprobar las teclas de movimientos
@@ -43,7 +48,7 @@ mode.insert:
 	;commandos especiales
 		checkKey1 key.esc, .exitmode 	
 
-	jmp .end
+	jmp .end2
 
 	;movimientos del cursor
 
@@ -80,6 +85,18 @@ mode.insert:
 	
 		.enter:
 		;Logica del enter
+			xor eax,eax
+			mov ax, [lastline]
+			
+			;inc ax
+
+			push eax
+			call text.newline
+
+
+
+
+			
 			jmp .end
 	
 		.exitmode:
@@ -87,7 +104,12 @@ mode.insert:
 			jmp .end
 
 
+
 	.end:
 	;Update
+	call UpdateBuffer
+	.end2:
 	call vim.update
+
+	jmp mode.insert
 	ret
