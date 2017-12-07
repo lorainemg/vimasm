@@ -4,7 +4,7 @@ extern UpdateBuffer
 
 section .edata
 	
-	text.length  dw 		65535   				;el tamano del texto
+	text.length  dd 		65535   				;el tamano del texto
 
 section .bss
 
@@ -15,9 +15,9 @@ section .data
 	
 
 	global cursor
-	cursor 		dw		0			;la posicion del cursor
+	cursor 		dd		0			;la posicion del cursor
 	
-	currentline	dw		0 		;la linea actual
+	currentline	dd		0 		;la linea actual
 	
 	GLOBAL lastline
 	lastline 	dd 		0		;la ultima linea que se ha escrito
@@ -249,7 +249,7 @@ text.newline:
 		pop edx
 		mov eax,[ebp+4]
 		mov [lines+4*eax+2],dx
-
+		mov word [lines +4*eax],1
 		inc word [lastline]
 		mov byte [text+edx],'@'
 		
