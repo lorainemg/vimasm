@@ -80,4 +80,4 @@ startSubR
     jmp .end
 
 .end
-endSubR 4
+endSubR 0
