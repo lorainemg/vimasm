@@ -60,16 +60,76 @@ ret %1
 
 
 ;parte el programa en dos, asi veo, en el reporte de error, los valores de todos los registros del sistema de manera inducida!!!
-%macro break 0
-push dword 0x21fc0039
-push dword 0x21fc0039
-push dword 0x21fc0039
-push dword 0x21fc0039
-push dword 0x21fc0039
-push dword 0x21fc0039
-push dword 0x21fc0039
-ret 
-%endmacro
+	%macro break 0
+	push dword 0x21fc0039
+	push dword 0x21fc0039
+	push dword 0x21fc0039
+	push dword 0x21fc0039
+	push dword 0x21fc0039
+	push dword 0x21fc0039
+	push dword 0x21fc0039
+	ret 
+	%endmacro
+
+
+	%macro breake 2
+	cmp %1,%2
+	jne 
+	break
+	%%.end
+	%endmacro
+
+	%macro breakne 2
+	cmp %1,%2
+	je 
+	break
+	%%.end
+	%endmacro
+
+	%macro breakz 2
+	cmp %1,%2
+	jnz 
+	break
+	%%.end
+	%endmacro
+
+	%macro breaknz 2
+	cmp %1,%2
+	jz 
+	break
+	%%.end
+	%endmacro
+
+	%macro breakb 2
+	cmp %1,%2
+	jnb 
+	break
+	%%.end
+	%endmacro
+
+	%macro breaka 2
+	cmp %1,%2
+	jna 
+	break
+	%%.end
+	%endmacro
+
+	%macro breakl 2
+	cmp %1,%2
+	jnl 
+	break
+	%%.end
+	%endmacro
+
+	%macro breakg 2
+	cmp %1,%2
+	jng 
+	break
+	%%.end
+	%endmacro
+
+
+
 
 
 
