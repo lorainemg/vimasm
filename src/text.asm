@@ -249,7 +249,7 @@ text.newline:
 		pop edx
 		mov eax,[ebp+4]
 		mov [lines+4*eax+2],dx
-		mov [lines +4*eax],1
+		mov word [lines +4*eax],1
 		inc word [lastline]
 		mov byte [text+edx],'@'
 		
