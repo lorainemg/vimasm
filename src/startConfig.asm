@@ -1,7 +1,8 @@
-
+%include "tools.mac"
 
 extern UpdateKeyboard, UpdateBuffer
-extern mode.normal
+extern text.startConfig
+extern mode.normal,mode.insert
 extern calibrate
 
 
@@ -18,9 +19,11 @@ global vim.start
   ;Cofiguro el inicio de los estados de los ensamblados
     call text.startConfig
   ;llamo a la funsion especial que abre el comienzo de la pantalla inicial, y sus respectivas opciones.
-
+    
+    call mode.insert
   ;salida a modo normal  
-    call mode.normal
+    ;call mode.normal
+
 ret
 
 
@@ -29,7 +32,8 @@ ret
 
 global vim.update
 vim.update:
+      startSubR
       call UpdateKeyboard
-      call UpdateBuffer
+      ;call UpdateBuffer
       endSubR 0
 

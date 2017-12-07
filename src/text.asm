@@ -10,7 +10,6 @@ section .bss
 
 	global text
 	text	resb 	65535						;donde guardo el texto
-	
 	lines	resd 	800							;control de lineas :  <comienzo,cantidad> en funcion de bytes del text
 section .data
 	
@@ -19,7 +18,9 @@ section .data
 	cursor 		dw		0			;la posicion del cursor
 	
 	currentline	dw		0 		;la linea actual
-	lastline 	dw 		0		;la ultima linea que se ha escrito
+	
+	GLOBAL lastline
+	lastline 	dd 		0		;la ultima linea que se ha escrito
 	moveV		dw 		0		;el ultimo movimiento vertical
 
 section .text
@@ -31,10 +32,11 @@ text.startConfig:
 	startSubR
 		
 	; section .data:
-		mov byte [text],' '
-
+		mov byte [text],'@'
 	; section .bss:
 		mov word [lines],1 		;valor inicial del texto 
+
+
 	endSubR 0
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
@@ -55,10 +57,11 @@ text.write:
 		mov [ebx],al		;[text + cursor] = ASCII
 	    
 	    inc word [cursor]
+
 	    inc word [lines]
 	   	.cont:
 	    inc ebx
-	    mov [ebx], byte ' ' 
+	    mov [ebx], byte '@' 
 	    ;actualizar linea
 		;mover forzado el cursor
 	endSubR 4
@@ -211,36 +214,83 @@ text.line:
 global text.newline
 text.newline:
 	startSubR
-		push dword [ebp+4]
-		call text.startline
-		mov edx,eax					;salvo el valor de el comienzo de la linea dada
 
-		push dword 1
-		push dword [ebp+4]
-		call text.skipline			;muevo el bloque de lineas	
-		
-		;rectifico si la linea a crear es, a lo sumo, inmediata a la ultima creada
+	;rectifico si la linea a crear es, a lo sumo, inmediata a la ultima creada
 		mov ax,[lastline]
 		inc ax
 		cmp ax,[ebp+4]
 		jb .end       				;si: line > lastline+1 => no tiene sentido alguno crearla
-		je .create					;si: line == lastline+1, me salto el corrimiento de lineaso
-		
+		je .onEnd					;si: line == lastline+1, me salto el corrimiento de lineaso
+									;entonces es una linea que esta entre otras lineas ya creadas
+
+		push dword [ebp+4]
+		call text.startline
+		push  eax					;salvo el valor de el comienzo de la linea dada
+
+		push dword 1
+		push dword [ebp+4]
+		call text.skipline			;muevo el bloque de lineas	
+	
+				
 		;veo si la linea a crear 
 		xor ecx,ecx
 		mov cx,[lastline]
 		sub ecx,[ebp+4]			 	;ecx = cantidad de lineas que tuve que mover un fila para crear esta
+		inc ecx
 
-		lea edi,[lines + eax + 4]
-		lea esi,[lines + eax]
+		xor eax,eax
+		mov ax,[lastline]
+		lea edi,[lines + 4*eax + 4]
+		lea esi,[lines + 4*eax]
 		std
+		
 		rep movsd 					;muevo desde abajo hasta arriba los valores de las lineas
 
-		.create:
+		pop edx
 		mov eax,[ebp+4]
 		mov [lines+4*eax+2],dx
+
 		inc word [lastline]
+		mov byte [text+edx],'@'
+		
+		jmp .end
+
+		.onEnd:
+		;calculo la fila en la que comenzara la linea creada
+			mov ax,[lastline]
+			push eax
+
+			call text.endline			;donde termina la ultima linea
+			
+
+			mov dl,80				
+				
+			div dl						;divido para quedarme con la parte multiplo de 80
+			xor edx,edx
+			mov dl,ah					;salvo el resto
+			push edx
+			and eax,0xff				;limpio el resto en ah
+
+			mov edx, 80				
+			mul dl						;reestablesco valor pero congruente 0 con 80
+			
+
+			pop edx						;recupero el resto
+			cmp edx,0					;veo si es 0
+			je .axl 					;si es 0 el valor de comienzo de la nueva linea es solo 80 mas
+			add eax,80				
+		.axl:							;auxiliar 
+			mov edx,eax					;edx = cantidad a sumar al comienzo
+			mov eax,[ebp+4]
+			mov [lines + 2 + 4*eax],dx
+			mov word [lines + 4*eax],1	;valor de uno para que tenga consistencia
+			
+
+			inc word [lastline]
+			mov byte [text+edx],'@'
+
 		.end:
+;break
 	endSubR 4
 
 
@@ -398,7 +448,7 @@ cursor.canmoveV:
 
 		cmp edx, 0					;es la pos hacia la que se va a mover menor que 0?
 		jl .no 						;si lo es, entonces no se puede mover
-		cmp edx, 2 ;[lastline]		;es la pos mayor que la ultima linea?
+		cmp edx, [lastline]		;es la pos mayor que la ultima linea?
 		jg .no 						;si lo es, entonces no se puede mover
 		mov eax, 1					;sino, se puede mover
 		jmp .end 					;en caso contrario se puede mover
