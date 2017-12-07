@@ -470,10 +470,11 @@ cursor.canmoveH:
 		call text.startline			;busco el principio de la linea
 	  	cmp ebx, eax				;comparo donde me quiero mover con el principio de la linea 
 	    jb .no						;si la poscion a la que me voy a mover es menor, entonces se sale de la linea actual y no me muevo
-		
+
 		push dword[currentline]	 	;pongo la linea actual como parametro
 		call text.endline 			;busco el final de la linea
 		;mov eax, 170
+		break
 	  	cmp ebx, eax				;se compara la posicion con el final de linea
 	  	ja .no						;si es mayor, entonces no hay movimiento
 	  	
