@@ -59,7 +59,19 @@ text.write:
 		mov [ebx],al		;[text + cursor] = ASCII
 	    
 		mov dword[moveV], 0
-	    inc word [cursor]
+	    inc dword [cursor]
+		
+		; mov ax, [cursor]
+		; mov bl, 80							;bl = 80 (para dividir)
+		; div bl								;divido pos del cursor con 80
+		; cmp ah, 0							;el resto es 0?
+		; jne .cont							;si no lo es, entonces ya termino
+		
+		; mov eax, [currentline]
+		; inc eax
+		; push dword 1
+		; push eax
+		; call text.skipline
 
 	   	.cont:
 	    inc ebx

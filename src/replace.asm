@@ -78,52 +78,12 @@ mode.replace:
 			jmp .end
 	
 		.backspace:
-			cmp dword[cursor], 0				;si el cursor esta en la primera posicion, no me muevo
-			je .end					
-			mov eax, [cursor]					;eax = posicion del cursor
-			dec dword[cursor]					;decremento el cursor
-			mov bl, 80							;bl = 80 (para dividir)
-			div bl								;divido pos del cursor con 80
-			cmp ah, 0							;el resto es 0?
-			jne .end							;si no lo es, entonces ya termino
-			mov eax, [currentline]				;de serlo, entonces hago eax = linea actual
-			dec eax								;busco la linea anterior a la actual
-			push eax							;la pongo como parametro
-			call text.endline					;y pregunto su fin de linea
-			mov [cursor], eax					;actualizo el cursor, para que se ponga en el fin de linea de la palabra
-			dec dword[currentline]				;decremento la linea actual
+			call backspace
 			jmp .end			
 	
 		.enter:
 		;Logica del enter
-            push dword[cursor]                  ;guardo la posicion actual del cursor
-            mov eax, [currentline]              ;eax = linea actual
-            inc eax                             ;incremento para empezar a desplazar a partir de la otra linea
-			push eax                            ;pongo la linea como parametro
-			call text.newline                   ;y creo una nueva linea en esa posicion
-            
-            xor edx, edx
-            xor ebx, ebx
-            mov eax, [esp]                      ;eax = posicion del cursor
-            mov ebx, 80                         ;ebx = 80
-            div ebx                             ;divido la posicion del cursor entre 80, guardo el resto en edx
-            sub ebx, edx                        ;termino de calcular el desplazamiento: 80-cursor%80
-            
-            mov edx, [currentline]         
-            dec edx                             ;edx = la linea que esta antes de la linea actual
-            push edx                            ;la pongo como parametro   
-            call text.endline                   ;y pregunto por su final de linea, guardado en eax
-            
-            pop ecx                             ;recupero la posicion del cursor
-            sub eax, ecx                        ;resto el final de linea menos la posicion del cursor,  
-            sub [lines+4*edx], ax               ;actualizo lines restando la cantidad de caracteres q voy a desplazar
-        	mov [lines+4*(edx+1)], ax           ;la nueva linea va a tener igual cant de caracteres q los q voy a desplazar
-            add eax, ecx                        ;regreso el valor de eax de fin de linea
-
-            push ebx                            ;pongo la cantidad que me tengo que desplazar como parametro
-            push ecx                            ;pongo la posicion del cursor como parametro (inicio)
-            push eax                            ;pongo el final de linea como parametro (final)
-            call text.move                      ;llamo para mover el texto
+			call enter
 			jmp .end    
 	
 		.exitmode:
@@ -138,3 +98,58 @@ mode.replace:
 
 	jmp mode.replace
 	ret
+
+;Logica para ejecutar backspace
+;call:
+;call backspace
+backspace:
+startSubR
+	cmp dword[cursor], 0				;si el cursor esta en la primera posicion, no me muevo
+	je .end					
+	mov eax, [cursor]					;eax = posicion del cursor
+	dec dword[cursor]					;decremento el cursor
+	mov dl, 80							;bl = 80 (para dividir)
+	div dl								;divido pos del cursor con 80
+	cmp ah, 0							;el resto es 0?
+	jne .end							;si no lo es, entonces ya termino
+	mov eax, [currentline]				;de serlo, entonces hago eax = linea actual
+	dec eax								;busco la linea anterior a la actual
+	push eax							;la pongo como parametro
+	call text.endline					;y pregunto su fin de linea
+	mov [cursor], eax					;actualizo el cursor, para que se ponga en el fin de linea de la palabra
+	dec dword[currentline]				;decremento la linea actual
+	.end:
+endSubR 0
+
+;Logica para ejecutar el enter
+;call:
+;call enter
+global enter
+enter:
+startSubR
+    push dword[cursor]                  ;guardo la posicion actual del cursor
+    mov eax, [currentline]              ;eax = linea actual
+    inc eax                             ;incremento para empezar a desplazar a partir de la otra linea
+	push eax                            ;pongo la linea como parametro
+	call text.newline                   ;y creo una nueva linea en esa posicion
+    
+    mov eax, [esp]                      ;eax = posicion del cursor
+    mov ebx, 80                         ;ebx = 80
+    div ebx                             ;divido la posicion del cursor entre 80, guardo el resto en edx
+    sub ebx, edx                        ;termino de calcular el desplazamiento: 80-cursor%80
+    
+    mov edx, [currentline]         
+    dec edx                             ;edx = la linea que esta antes de la linea actual
+    push edx                            ;la pongo como parametro   
+    call text.endline                   ;y pregunto por su final de linea, guardado en eax
+    
+    pop ecx                             ;recupero la posicion del cursor
+    sub eax, ecx                        ;resto el final de linea menos la posicion del cursor,  
+    sub [lines+4*edx], ax               ;actualizo lines restando la cantidad de caracteres q voy a desplazar
+    mov [lines+4*(edx+1)], ax           ;la nueva linea va a tener igual cant de caracteres q los q voy a desplazar
+    add eax, ecx                        ;regreso el valor de eax de fin de line
+    push ebx                            ;pongo la cantidad que me tengo que desplazar como parametro
+    push ecx                            ;pongo la posicion del cursor como parametro (inicio)
+    push eax                            ;pongo el final de linea como parametro (final)
+    call text.move                      ;llamo para mover el texto
+endSubR 0
