@@ -127,28 +127,32 @@ endSubR 0
 global enter
 enter:
 startSubR
-    push dword[cursor]                  ;guardo la posicion actual del cursor
+    mov eax, [cursor]                   ;eax = posicion del cursor
+    mov ebx, 80                         ;ebx = 80
+    div ebx                             ;divido la posicion del cursor entre 80, guardo el resto en edx
+    sub ebx, edx                        ;termino de calcular el desplazamiento: 80-cursor%80
+	  
+    mov edx, [currentline]         
+    push edx                            ;la pongo como parametro   
+    call text.endline                   ;y pregunto por su final de linea, guardado en eax
+    push eax
+
+    mov ecx, [cursor]                   ;recupero la posicion del cursor
+    sub eax, ecx                        ;resto el final de linea menos la posicion del cursor,  
+    push eax
+	sub [lines+4*edx], ax               ;actualizo lines restando la cantidad de caracteres q voy a desplazar
+  ;  add eax, ecx                        ;regreso el valor de eax de fin de line
+    
+   ; push dword[cursor]                  ;guardo la posicion actual del cursor
     mov eax, [currentline]              ;eax = linea actual
     inc eax                             ;incremento para empezar a desplazar a partir de la otra linea
 	push eax                            ;pongo la linea como parametro
 	call text.newline                   ;y creo una nueva linea en esa posicion
-    
-    mov eax, [esp]                      ;eax = posicion del cursor
-    mov ebx, 80                         ;ebx = 80
-    div ebx                             ;divido la posicion del cursor entre 80, guardo el resto en edx
-    sub ebx, edx                        ;termino de calcular el desplazamiento: 80-cursor%80
-    
-    mov edx, [currentline]         
-    dec edx                             ;edx = la linea que esta antes de la linea actual
-    push edx                            ;la pongo como parametro   
-    call text.endline                   ;y pregunto por su final de linea, guardado en eax
-    
-    pop ecx                             ;recupero la posicion del cursor
-    sub eax, ecx                        ;resto el final de linea menos la posicion del cursor,  
-    sub [lines+4*edx], ax               ;actualizo lines restando la cantidad de caracteres q voy a desplazar
-    mov [lines+4*(edx+1)], ax           ;la nueva linea va a tener igual cant de caracteres q los q voy a desplazar
-    add eax, ecx                        ;regreso el valor de eax de fin de line
-    push ebx                            ;pongo la cantidad que me tengo que desplazar como parametro
+    pop eax
+	mov [lines+4*(edx+1)], ax           ;la nueva linea va a tener igual cant de caracteres q los q voy a desplazar
+
+	pop eax
+	push ebx                            ;pongo la cantidad que me tengo que desplazar como parametro
     push ecx                            ;pongo la posicion del cursor como parametro (inicio)
     push eax                            ;pongo el final de linea como parametro (final)
     call text.move                      ;llamo para mover el texto
