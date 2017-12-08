@@ -30,8 +30,6 @@ mode.insert:
 		jmp .end
 
 
-
-
 	.commad:
 
 	;Para comprobar las teclas de movimientos
@@ -72,7 +70,6 @@ mode.insert:
 			call cursor.moveV
 			jmp .end
 	
-
 	;acciones especiales
 
 		.tab:
@@ -102,8 +99,6 @@ mode.insert:
 		.exitmode:
 		;Logica para salir del modo
 			jmp .end
-
-
 
 	.end:
 	;Update
