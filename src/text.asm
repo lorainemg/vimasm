@@ -290,10 +290,9 @@ text.newline:
 			mov byte [text+edx],'@'
 
 		.end:
-;break
 	endSubR 4
 
-
+  
 
 ;elimina, si es posible, la linea determinada
 	;call: 
@@ -302,11 +301,84 @@ text.newline:
 global text.deleteline
 text.deleteline:
 	startSubR
+;rectifico si la linea a crear es, a lo sumo, inmediata a la ultima creada
+		mov ax,[lastline]
+		cmp ax,0
+		je .end
+		cmp ax,[ebp+4]
+		jb .end       				;si: line > lastline+1 => no tiene sentido alguno crearla
+		je .onEnd					;si: line == lastline+1, me salto el corrimiento de lineaso
+									;entonces es una linea que esta entre otras lineas ya creadas
+		
+		push dword [ebp+4]
+		call text.startline
+		mov edx,eax					;edx = comienzo de line
+
+		mov eax , [ebp+4]			
+		inc eax
+		push eax
+		call text.startline			;eax = comienzo de line +1
+
+
+		sub eax,edx					; eax = comienzo de line - el de line +1
+		mov dl,80
+		
+		div dl					;divido esa diferencia entre 80, se que sera una divicion exacta. esto da la cantidad de lineas que hare skip
+		
+		neg eax						;vuelvo negativo esa diferencia
+		
+		push eax					;count 
+		mov eax,[ebp+4]
+		inc eax
+		push eax					;lines +1
+		call text.skipline			;muevo el bloque de lineas	desde la siguiente a la actual 
+		 
+		;Ya esta movido el bloque, y los valores estan cambiados, solo falta arreglar lines		
+		;veo si la linea a borrar 
+		xor ecx,ecx
+		mov cx,[lastline]
+		sub ecx,[ebp+4]			 	;ecx = cantidad de lineas que tuve que mover un fila para eliminar esta, esto es last-line
 	
+		xor eax,eax
+		mov ax,[ebp+4]
+		lea edi,[lines + 4*eax]
+		lea esi,[lines + 4*eax+4]
+		cld
+		
+		rep movsd 					;muevo desde arriba hasta abajo los valores de las lineas
+
+		dec word [lastline]			;decremento lastline
+		
+		jmp .end
 
 
+		.onEnd:
+		;estoy borrando la ultima linea
+		xor eax,eax
 
+		mov ax,[lastline]
+		push eax
+		call text.startline		;eax = startline (lastline)
 
+		lea edi,[text+eax]		;edi = comienzo de lastline
+		
+		mov edx,eax				;edx = comienzo de lastline
+		
+		mov eax,[lastline]
+		push eax
+		call text.endline		;eax = endline(lastline)
+
+		sub eax,edx				;eax = startline - endline
+		mov ecx,eax				
+		xor eax,eax
+		cld
+		rep stosb				;pongo zero en el texto
+
+		mov eax,[lastline]
+		mov word [lines+eax*4],0
+		mov word [lines+eax*4 + 2],0
+		dec word [lastline]
+		.end:
 	endSubR 4
 
 
