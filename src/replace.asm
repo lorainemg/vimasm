@@ -78,7 +78,21 @@ mode.replace:
 			jmp .end
 	
 		.backspace:
-			jmp .end
+			cmp dword[cursor], 0				;si el cursor esta en la primera posicion, no me muevo
+			je .end					
+			mov eax, [cursor]					;eax = posicion del cursor
+			dec dword[cursor]					;decremento el cursor
+			mov bl, 80							;bl = 80 (para dividir)
+			div bl								;divido pos del cursor con 80
+			cmp ah, 0							;el resto es 0?
+			jne .end							;si no lo es, entonces ya termino
+			mov eax, [currentline]				;de serlo, entonces hago eax = linea actual
+			dec eax								;busco la linea anterior a la actual
+			push eax							;la pongo como parametro
+			call text.endline					;y pregunto su fin de linea
+			mov [cursor], eax					;actualizo el cursor, para que se ponga en el fin de linea de la palabra
+			dec dword[currentline]				;decremento la linea actual
+			jmp .end			
 	
 		.enter:
 		;Logica del enter
