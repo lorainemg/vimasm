@@ -61,17 +61,17 @@ text.write:
 		mov dword[moveV], 0
 	    inc dword [cursor]
 		
-		; mov ax, [cursor]
-		; mov bl, 80							;bl = 80 (para dividir)
-		; div bl								;divido pos del cursor con 80
-		; cmp ah, 0							;el resto es 0?
-		; jne .cont							;si no lo es, entonces ya termino
+		mov ax, [cursor]
+		mov dl, 80							;bl = 80 (para dividir)
+		div dl								;divido pos del cursor con 80
+		cmp ah, 0							;el resto es 0?
+		jne .cont							;si no lo es, entonces ya termino
 		
-		; mov eax, [currentline]
-		; inc eax
-		; push dword 1
-		; push eax
-		; call text.skipline
+		mov eax, [currentline]
+		inc eax
+		push dword 1
+		push eax
+		call text.skipline
 
 	   	.cont:
 	    inc ebx
