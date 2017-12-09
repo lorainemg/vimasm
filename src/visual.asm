@@ -6,7 +6,7 @@ extern isKey1,isKey2,isKey3, getChar
 ;text externs
 extern cursor.moveH, cursor.moveV, select.start
 ;main externs
-extern vim.update
+extern vim.update, video.Update
 
 section .data
 mode db 0
