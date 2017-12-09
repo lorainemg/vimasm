@@ -15,6 +15,8 @@ section .bss
 	lines.starts	resd 	800							;control de lineas :  <comienzo,cantidad> en funcion de bytes del text
 	global lines.lengths
 	lines.lengths 	resd 800
+
+	copy			resb	500
 section .data
 	global cursor
 	cursor 		dd		0			;la posicion del cursor
@@ -29,7 +31,6 @@ section .data
 
 	start dd  0
 	mode  dd  0
-
 section .text
 
 
@@ -502,8 +503,30 @@ cursor.moveV:
 global select.start
 select.start:
 	startSubR
-	mov eax, [cursor]
-	mov [start], eax
-	mov eax, [ebp+4]
-	mov [mode], eax
+		mov eax, [cursor]
+		mov [start], eax			;la posicion del cursor es el principio de mi seleccion
+		mov eax, [ebp+4]			
+		mov [mode], eax				;copio el modo que se pasa como parametro
 	endSubR 4
+
+;Selecciona en modo linea
+;call:
+;call select.line
+select.line:
+startSubR
+	push dword[start]				;pongo donde empieza mi seleccion como parametro
+	call lines.line					;pregunto por la linea de mi seleccion
+	mov edx, [lines.start+4*eax]	;busco el principio de esa linea
+
+	push dword[lines.current]		;pongo mi linea actual como parametro
+	call lines.endline				;busco el final de mi linea actual
+
+	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
+	mov ecx, eax					;la cantidad de movimientos q hago:					
+	sub ecx, edx					;
+	
+	lea esi, [text+edx]
+	mov edi, copy
+	rep movsb
+
+endSubR 0

@@ -18,6 +18,7 @@ global start.visual
 start.visual:
 startSubR
     mov eax, [ebp+4]
+    mov [mode], eax
     push eax
     call select.start
 endSubR 4
