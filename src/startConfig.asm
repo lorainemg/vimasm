@@ -28,8 +28,6 @@ ret
 
 
 
-
-
 global vim.update
 vim.update:
       startSubR

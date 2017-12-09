@@ -7,13 +7,13 @@
 
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
-	extern text.insert,text.newline
+	extern text.insert,lines.newline
 	extern lastline
 	extern text, text.movebackward, text.moveforward
 
 
 ;main externs
-	extern vim.update,UpdateBuffer
+	extern vim.update,video.Update
 	
 section .text
 
@@ -86,7 +86,7 @@ mode.insert:
 		.enter:
 		;Logica del enter
 			push dword[cursor]
-			call text.newline	
+			call lines.newline	
 			jmp .end
 	
 		.exitmode:
@@ -95,7 +95,7 @@ mode.insert:
 
 	.end:
 	;Update
-	call UpdateBuffer
+	call video.Update
 	.end2:
 	call vim.update
 

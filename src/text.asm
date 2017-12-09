@@ -293,7 +293,7 @@ lines.newline:
 		;1-calculo diferenciales: hago espacio para annadir valores nuevos
 		
 		;muevo lengths
-			mov eax,[lastline]
+			mov eax,[lines.lastline]
 			lea edi,[lines.lengths + 4*(eax+1)]
 			lea esi,[lines.lengths + 4*eax]
 			std 
@@ -302,7 +302,7 @@ lines.newline:
 			sub ecx,eax
 			rep movsd 
 		;muevo starts
-			mov eax,[lastline]
+			mov eax,[lines.lastline]
 			lea edi, [lines.starts + 4*(eax+1)]
 			lea esi, [lines.starts + 4*eax]
 			std
@@ -317,7 +317,7 @@ lines.newline:
 		mov edx,eax					;salvo en edx
 		push edx					;salvo fin de linea
 		push dword [lines.current]
-		call lines.startline		;eax = inicio de linea
+		call lines.startsline		;eax = inicio de linea
 		
 		mov edx,[cursor]
 		sub edx,eax					;calculo cursor-inicio 
@@ -347,7 +347,7 @@ lines.newline:
 		mov [lines.starts + 4*(eax+1)],edx 
 
 		;muevo el text para crear espacio al fin de linea
-		inc [lines.current]
+		inc dword[lines.current]
 		jmp .end
 
 	;	.onEnd:

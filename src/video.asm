@@ -49,29 +49,29 @@ video.Update:
     startSubR
         call video.UpdateText
    
+        mov al, [videoflags]
     .trycursor:
-        test videoflags,hidecursor
-        jz tryselection
-        call vid.UpdateCursor
+        test al,  hidecursor
+        jz .tryselection
+        call video.UpdateCursor
    
     .tryselection:
-        test videoflags,hideselection
+        test al, hideselection
         jz .trysearch
-        call vide.UpdateSelection
+        call video.UpdateSelection
    
     .trysearch:
-        test videoflags,hidesearch
+        test al, hidesearch
         jz .end
-        call UpdateSearch
+        call video.UpdateSearch
 
    .end:
 endSubR 0
 
 
-
 video.UpdateText:
 startSubR
-
+  ;  break
     mov esi,text
     mov edi,buffer
     mov ecx,24
@@ -80,17 +80,18 @@ startSubR
     mov ecx,80
 .columns:
     stosb               ;eax = ACSII
-    cmp al,ACSII.enter  ;si es enter entonces pinto enter
+    cmp al,ASCII.enter  ;si es enter entonces pinto enter
+    break
     je .paintEnter
 
-    cmp al,ACSII.tap    ;si es tap entonces pinto taps
-    je paintTap
+    cmp al,ASCII.tab   ;si es tap entonces pinto taps
+    je .paintTab
 
     cmp al,0
-    je paintEmply
+    je .paintEmpty
 
 
-    mov ah,format.text                 ;pinto ACSII
+    mov ah,[format.text]                 ;pinto ACSII
     lodsw
     loop .columns
 
@@ -99,9 +100,9 @@ startSubR
     loop .rows
     jmp .end
 
-.paintEmply:
+.paintEmpty:
     mov al,'~' 
-    mov ah,format.text 
+    mov ah,[format.text]
     and ah,0x0f                         ;nnannarita negra
     lodsw                               ;solo pinto una
     xor al,al
@@ -109,12 +110,12 @@ startSubR
     jmp .endrow
 
 .paintEnter:
-    mov ah,format.enter
+    mov ah,[format.enter]
     ;lodsw
     ;xor ax,ax
     rep lodsw                           ;pintara el resto de la linea del formato 
     jmp .endrow
-.paintTap:
+.paintTab:
     jmp .columns
 
 .end:

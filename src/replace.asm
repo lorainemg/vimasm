@@ -6,12 +6,12 @@
 
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
-	extern text.replace,text.newline, lines.endline
+	extern text.replace,lines.newline, lines.endline
 	extern lastline, lines, lines.current
 	extern text
 
 ;main externs
-	extern vim.update,UpdateBuffer
+	extern vim.update,video.Update
 
 section .text
 global mode.replace 
@@ -83,7 +83,7 @@ mode.replace:
 		.enter:
 		;Logica del enter
 			push dword[cursor]
-			call text.newline	
+			call lines.newline	
 			jmp .end    
 	
 		.exitmode:
@@ -92,7 +92,7 @@ mode.replace:
 
 	.end:
 	;Update
-	call UpdateBuffer
+	call video.Update
 	.end2:
 	call vim.update
 
