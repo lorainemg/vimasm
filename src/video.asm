@@ -104,8 +104,9 @@ startSubR
 .paintEmpty:
     mov al,'~' 
     mov ah,[format.text]
-    and ah,0x0f                         ;nnannarita negra
+    and ah,0x0f0                         ;nnannarita negra
     stosw                               ;solo pinto una
+    dec ecx
     xor al,al
     rep stosw                           ;termino fila
     ; mov bl, [buffer]
