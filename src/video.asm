@@ -77,11 +77,9 @@ startSubR
     mov ecx,24
 .rows:
     push ecx
-
     mov ecx,80
 .columns:
     stosb               ;eax = ACSII
-
     cmp al,ACSII.enter  ;si es enter entonces pinto enter
     je .paintEnter
 
@@ -104,7 +102,7 @@ startSubR
 .paintEmply:
     mov al,'~' 
     mov ah,format.text 
-    and ah,0x01                         ;nnannarita negra
+    and ah,0x0f                         ;nnannarita negra
     lodsw                               ;solo pinto una
     xor al,al
     rep lodsw                           ;termino fila

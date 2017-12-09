@@ -79,13 +79,15 @@ text.insert:
 		push dword[cursor]
 		text.moveforward
 
-		mov ebx,text  		;ebx =text
-		add ebx,[cursor]	;ebx = text + cursor
-		mov al,[ebp+4]   	;guardo 
-		mov [ebx],al		;[text + cursor] = ASCII
+		mov ebx,text  					;ebx =text
+		add ebx,[cursor]				;ebx = text + cursor
+		mov al,[ebp+4]   				;guardo 
+		mov [ebx],al					;[text + cursor] = ASCII
 	    
-		mov dword[moveV], 0	;desactualizo el valor de mover vertical
-	    inc dword [cursor]	;incremento la posicion del cursor
+		mov eax,[lines.current]
+		inc [lines.lengths + 4*eax]		;incremento el tamanno de la linea actual 
+		mov dword[moveV], 0				;desactualizo el valor de mover vertical
+	    inc dword [cursor]				;incremento la posicion del cursor
 	endSubR 4
 
 ;mueve todo el texto
@@ -263,7 +265,7 @@ lines.newline:
 		call lines.endline
 		cmp eax,[cursor]
 		jb .end       				;si: line > lines.lastline+1 => no tiene sentido alguno crearla
-		je .onEnd					;si: line == lines.lastline+1, me salto el corrimiento de lineas o
+		;je .onEnd					;si: line == lines.lastline+1, me salto el corrimiento de lineas o
 		 
 		;crear una linea dentro de otra
 		
@@ -307,9 +309,12 @@ lines.newline:
 		mov eax,[lines.current]
 		mov [lines.lengths + 4*(eax+1)],edx	;tamanno de la nueva linea = fin-cursor 
 		pop edx
-		inc edx
 		mov [lines.lengths +4*eax],edx 		;tamanno de la linea partida = cursor-linea +1 (mas uno lo que este se annade luego)
 		
+
+		push dword ASCII.enter
+		call text.insert
+
 
 		;ajusto inicio de la linea nueva
 		mov eax,[lines.current]
@@ -321,30 +326,26 @@ lines.newline:
 		mov [lines.starts + 4*(eax+1)],edx 
 
 		;muevo el text para crear espacio al fin de linea
-		mov eax,[cursor] 
-		push eax
-		call text.moveforward
-		mov eax,[cursor]
-		mov [text + eax],ASCII.enter
+		inc [lines.current]
 		jmp .end
 
-		.onEnd:
-		;calculo la fila en la que comenzara la linea creada
-		
-		 mov eax,[lastline]
-		 push eax
-		 call lines.endline
-		 inc eax								;incremento para  
-		 mov edx,eax							;salvo endline
-		 
-		 inc dword [lines.lastline]				;incremento ultima linea
-		 mov eax,[lines.lastline]			
-		 mov [lines.startline +4*eax],edx		;muevo a la ultima linea el valor de el fin de la anterior mas 1
-		
-		 mov eax,[cursor]
-		 mov [text + eax],ASCII.enter
-		 mov eax,[lastline]
-		 inc dword [lines.lengths + 4*eax]		;incremento valor de cantidad de caracteres ya que annadi enter
+	;	.onEnd:
+	;	;calculo la fila en la que comenzara la linea creada
+	;	
+	;	 mov eax,[lastline]							
+	;	 push eax
+	;	 call lines.endline
+	;	 inc eax								;incremento para  
+	;	 mov edx,eax							;salvo endline
+	;	 
+	;	 inc dword [lines.lastline]				;incremento ultima linea
+	;	 mov eax,[lines.lastline]			
+	;	 mov [lines.startline +4*eax],edx		;muevo a la ultima linea el valor de el fin de la anterior mas 1
+	;	
+	;	 mov eax,[cursor]
+	;	 mov [text + eax],ASCII.enter
+	;	 mov eax,[lastline]
+	;	 inc dword [lines.lengths + 4*eax]		;incremento valor de cantidad de caracteres ya que annadi enter
 		 
 		.end:
 	endSubR 4
