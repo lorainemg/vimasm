@@ -6,10 +6,10 @@
 
 
 ;text externs
-	extern cursor.moveH, cursor.moveV
+	extern cursor.moveH, cursor.moveV, cursor
 	extern text.insert,text.newline
 	extern lastline
-	extern text
+	extern text, text.movebackward, text.moveforward
 
 
 ;main externs
@@ -28,7 +28,6 @@ mode.insert:
 		push eax					;se guarda el caracter en la pila como parametro de text.write
 		call text.insert				;se procede a escribir el caracter en el texto	call UpdateBuffer
 		jmp .end
-
 
 	.commad:
 
@@ -74,15 +73,20 @@ mode.insert:
 
 		.tab:
 		;Logica de tab
+			push dword ASCII.tab
+			call text.insert
 			jmp .end
 	
 		.backspace:
 		;Logica del backspace
+			push dword[cursor]
+			call text.movebackward
 			jmp .end
 	
 		.enter:
 		;Logica del enter
-
+			push dword[cursor]
+			call text.newline	
 			jmp .end
 	
 		.exitmode:
@@ -96,4 +100,4 @@ mode.insert:
 	call vim.update
 
 	jmp mode.insert
-	ret
+ret

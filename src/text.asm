@@ -39,9 +39,9 @@ text.startConfig:
 	; section .data:
 		mov byte [text],ASCII.enter
 	; section .bss:
-		mov word [lines.lengths],1 		;valor inicial del texto 
+		mov word [lines.lengths],1		;valor inicial del texto 
 		mov dword[text.size], 1
-
+	;	mov dword[cursor], 1
 	endSubR 0
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
@@ -64,7 +64,7 @@ text.replace:
 		mov eax, [lines.current]
 		inc dword[lines.lengths+4*eax]
 		inc dword[text.size]
-		
+
 		.normal:
 		xor eax, eax
 		mov al,[ebp+4]   		;guardo 
@@ -108,9 +108,9 @@ text.moveforward:
 	push eax
 	call lines.endline
 
-	mov ecx, [text.size]
-	mov eax, [ebp+4]
-	sub ecx,eax
+	mov ecx, eax
+	dec eax
+	sub ecx,[ebp+4]
 	std
 	lea edi,[text+eax+1]
 	lea esi,[text+eax]
@@ -144,34 +144,39 @@ text.moveforward:
 global text.movebackward
 text.movebackward:
 	startSubR
-	push dword[ebp+4]						;pongo la linea actual como parametro
-	call lines.line							;busco la linea de la posicion actual
-	
-	mov eax, [ebp+4]					
+	mov eax, [ebp+4]	
+	dec eax				
 	lea edi, [text+eax]						;mi destino es la posicion actual						
 	lea esi, [text+eax+1]					;mi origen es la posicion actual mas 1
 
 	cld								
 	mov ecx, [text.size]
 	sub ecx, eax							;calculo las veces que voy a moverme: el tamano del text-pos
+	cmp ecx, 1								;si estoy en la posicion final del texto
+	jbe .end								;entonces no borro
 	rep movsb 								;voy moviendo las palabras
+	
+	dec dword[cursor]
+	dec dword[text.size]
 
 	;Actualizar las posiciones de lines.starts:
-	mov eax, [ebp+4]
+	push dword[ebp+4]						;pongo la linea actual como parametro
+	call lines.line	
 	mov ecx, [lines.lastline]				;para calcular cuato me tengo que mover
 	sub ecx, eax							;la ultima linea - pos
-	
-	cmp eax, 0x0d							;el caracter que borre es fin de linea?
+
+	mov edx, [ebp+8]
+	cmp edx, 0x0d							;el caracter que borre es fin de linea?
 	jne .normal								;sino lo es, actualizo los valores normal
 	jmp .eraseline							;de serlo, elimino la linea
 
 	.eraseline:
+	cmp ecx, 0								;si estoy en la ultima linea
+	je .end									;entonces no puedo borrar la linea
 	dec dword[lines.lastline]				;decremento el valor de la ultima linea
 	mov edx, [lines.lengths+4*eax]			;guardo la cantidad de caracteres de la linea q elimine
 	add [lines.lengths+4*(eax-1)], edx		;y a la linea anterior se le adiciona la cant de caracteres de la otra linea
 	
-	cmp eax, dword[lines.lastline]
-	je .end
 	;Correr las lineas por lines.lengths:
 	cld
 	lea esi, [lines.lengths+4*(eax+1)]		;mi origen es la linea actual +1
@@ -185,9 +190,10 @@ text.movebackward:
 	lea edi, [lines.starts+4*eax]			;mi destino la linea actual
 
 	jmp .lp									;y procedo a copiar los valores
-
 	.normal:								;si no borre un fin de linea
-	cmp eax, dword[lines.lastline]
+	dec dword[lines.lengths+4*eax]
+	
+	cmp ecx, 0
 	je .end
 	
 	cld
@@ -278,7 +284,7 @@ text.newline:
 		push dword[ebp+4]
 		call lines.line
 		mov edx,[lines.lastline]
-;		push lines.endline
+		;push lines.endline
 		cmp eax,edx
 		jb .end       				;si: line > lines.lastline+1 => no tiene sentido alguno crearla
 		je .onEnd					;si: line == lines.lastline+1, me salto el corrimiento de lineas o
@@ -310,8 +316,9 @@ text.newline:
 		jmp .end
 
 		.onEnd:
+		;break
 		;calculo la fila en la que comenzara la linea creada
-		 mov eax,[lines.lastline]
+		 mov eax, [lines.lastline]
 		 push eax
 		 call lines.endline
 		 inc eax								;incremento para  
@@ -319,7 +326,7 @@ text.newline:
 		 
 		 inc dword [lines.lastline]				;incremento ultima linea
 		 mov eax,[lines.lastline]			
-		 mov [lines.startsline +4*eax],edx		;muevo a la ultima linea el valor de el fin de la anterior mas 1
+		 mov [lines.starts+4*eax],edx			;muevo a la ultima linea el valor del fin de la anterior mas 1
 		
 		 mov eax,[ebp+4]
 		 mov [text + eax],byte ASCII.enter

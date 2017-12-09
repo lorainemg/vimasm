@@ -20,6 +20,11 @@ mode.replace:
 		cmp ax, 0 					;si no se presiona ninguna tecla
 		je .commad					;entonces se salta hasta el final
 		
+		; cmp eax, 0x0d
+		; je .enter
+		; cmp eax, ASCII.tab
+		; je .tab
+
 		push eax					;se guarda el caracter en la pila como parametro de text.write
 		call text.replace
 		jmp .end                    
@@ -67,7 +72,8 @@ mode.replace:
 
 		.tab:
 		;Logica de tab
-			call tab
+			push dword ASCII.tab
+			call text.replace
 			jmp .end
 	
 		.backspace:
@@ -76,8 +82,8 @@ mode.replace:
 	
 		.enter:
 		;Logica del enter
-			break
-			call enter
+			push dword[cursor]
+			call text.newline	
 			jmp .end    
 	
 		.exitmode:
@@ -114,18 +120,3 @@ startSubR
 	dec dword[lines.current]			;decremento la linea actual
 	.end:
 endSubR 0
-
-tab:
-	push dword ASCII.tab
-	call text.replace
-	ret
-
-;Logica para ejecutar el enter
-;call:
-;call enter
-global enter
-enter:
-	startSubR
-		push dword[cursor]
-		call text.newline	
-	endSubR 0
