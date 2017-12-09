@@ -31,13 +31,14 @@ section .data
     %define respawcursor    1<<3
     ;video control
     scroll dd 0      ;linea que marca el scroll
-
+    buffer.width    dd   80
+    buffer.height   dd   24 
     %define buffer.length 2000 
     %define buffer.textlength 1920
     %define buffer 0xB8000
 
 extern text
-extern cursor,lines.current
+extern cursor,lines.current,lines.lengths,lines.endline,lines.startsline
 
 section .text
 
@@ -52,17 +53,17 @@ video.Update:
         mov al, [videoflags]
     .trycursor:
         test al,  hidecursor
-        jz .tryselection
+        jnz .tryselection
         call video.UpdateCursor
    
     .tryselection:
         test al, hideselection
-        jz .trysearch
+        jnz .trysearch
         call video.UpdateSelection
    
     .trysearch:
         test al, hidesearch
-        jz .end
+        jnz .end
         call video.UpdateSearch
 
    .end:
@@ -74,11 +75,11 @@ startSubR
   ;  break
     mov esi,text
     mov edi,buffer
-    mov ecx,24
+    mov ecx,[buffer.height]
     cld
 .rows:
     push ecx
-    mov ecx,80
+    mov ecx,[buffer.width]
 .columns:
     lodsb               ;eax = ACSII
   ;  break
@@ -137,7 +138,24 @@ endSubR 0
 
 video.UpdateCursor:
 startSubR
+mov eax,[lines.current]                 
+sub eax,[scroll]                        
+mov dx,[buffer.width]                               
+mul dx
+mov edx,eax                             ;edx = 80*(lines.current - scroll)
+mov eax,[lines.current] 
+push eax
+call lines.startsline
+push edx
+mov edx,eax
+mov eax,[cursor]
+sub eax,edx
+pop edx
+add edx,eax
 
+mov ah,[format.cursor]
+mov al,[buffer + 2*edx]             ;
+mov [buffer + 2*edx],ax
 endSubR 0
 
 

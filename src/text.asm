@@ -13,6 +13,7 @@ section .bss
 	;trabajo con lineas
 	global lines.starts
 	lines.starts	resd 	800							;control de lineas :  <comienzo,cantidad> en funcion de bytes del text
+	global lines.lengths
 	lines.lengths 	resd 800
 section .data
 	
@@ -369,7 +370,7 @@ lines.newline:
 	;	 inc dword [lines.lengths + 4*eax]		;incremento valor de cantidad de caracteres ya que annadi enter
 		 
 		.end:
-	endSubR 4
+	endSubR 0
 
 
 
