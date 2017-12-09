@@ -89,10 +89,6 @@ mode.insert:
 
 			push eax
 			call text.newline
-
-
-
-
 			
 			jmp .end
 	

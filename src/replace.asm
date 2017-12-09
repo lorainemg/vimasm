@@ -16,20 +16,12 @@
 section .text
 global mode.replace 
 mode.replace:
-
 		call getChar				;obtiene el caracter de la tecla que se presiono
 		cmp ax, 0 					;si no se presiona ninguna tecla
 		je .commad					;entonces se salta hasta el final
-
+		
 		push eax					;se guarda el caracter en la pila como parametro de text.write
-		call text.write				;se procede a escribir el caracter en el texto	call UpdateBuffer
-     
-        mov edx, [currentline]
-        push edx                    ;pongo la linea actual como parametro
-        call text.endline           ;llamo para buscar el final de linea de la linea actual
-        cmp [cursor], eax           ;si la posicion del cursor es menor que el final
-        jb .end                     ;entonces termino
-        inc word [lines+4*edx]      ;sino, aumento el valor de cantidad de caracteres de la linea actual
+		text.replace
 		jmp .end                    
 
 	.commad:
@@ -115,7 +107,7 @@ startSubR
 	mov eax, [currentline]				;de serlo, entonces hago eax = linea actual
 	dec eax								;busco la linea anterior a la actual
 	push eax							;la pongo como parametro
-	call text.endline					;y pregunto su fin de linea
+	call lines.endline					;y pregunto su fin de linea
 	mov [cursor], eax					;actualizo el cursor, para que se ponga en el fin de linea de la palabra
 	dec dword[currentline]				;decremento la linea actual
 	.end:
@@ -126,34 +118,7 @@ endSubR 0
 ;call enter
 global enter
 enter:
-startSubR
-    mov eax, [cursor]                   ;eax = posicion del cursor
-    mov ebx, 80                         ;ebx = 80
-    div ebx                             ;divido la posicion del cursor entre 80, guardo el resto en edx
-    sub ebx, edx                        ;termino de calcular el desplazamiento: 80-cursor%80
-	  
-    mov edx, [currentline]         
-    push edx                            ;la pongo como parametro   
-    call text.endline                   ;y pregunto por su final de linea, guardado en eax
-    push eax
-
-    mov ecx, [cursor]                   ;recupero la posicion del cursor
-    sub eax, ecx                        ;resto el final de linea menos la posicion del cursor,  
-    push eax
-	sub [lines+4*edx], ax               ;actualizo lines restando la cantidad de caracteres q voy a desplazar
-  ;  add eax, ecx                        ;regreso el valor de eax de fin de line
-    
-   ; push dword[cursor]                  ;guardo la posicion actual del cursor
-    mov eax, [currentline]              ;eax = linea actual
-    inc eax                             ;incremento para empezar a desplazar a partir de la otra linea
-	push eax                            ;pongo la linea como parametro
-	call text.newline                   ;y creo una nueva linea en esa posicion
-    pop eax
-	mov [lines+4*(edx+1)], ax           ;la nueva linea va a tener igual cant de caracteres q los q voy a desplazar
-
-	pop eax
-	push ebx                            ;pongo la cantidad que me tengo que desplazar como parametro
-    push ecx                            ;pongo la posicion del cursor como parametro (inicio)
-    push eax                            ;pongo el final de linea como parametro (final)
-    call text.move                      ;llamo para mover el texto
-endSubR 0
+	startSubR
+		push dword[cursor]
+		call text.newline	
+	endSubR 0
