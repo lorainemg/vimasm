@@ -4,7 +4,7 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, getChar 
 ;text externs
-extern cursor.moveH, cursor.moveV
+extern cursor.moveH, cursor.moveV, select.start
 ;main externs
 extern vim.update
 
@@ -18,9 +18,8 @@ global start.visual
 start.visual:
 startSubR
     mov eax, [ebp+4]
-    ; mov [mode], eax
     push eax
-    ;Llamar para empezar la seleccion
+    call select.start
 endSubR 4
 
 global mode.visual
@@ -31,10 +30,10 @@ startSubR
     checkKey1 key.y, .copy
 
     ;Si se movio alguna tecla de movimiento
-    checkKey1 key.up,    .selectUp
-    checkKey1 key.down,  .selectDown
-    checkKey1 key.left,  .selectLeft
-    checkKey1 key.right, .selectRight
+	checkKey1 key.left,  .moveleft			;Comprueba si se presiono la tecla izq 
+	checkKey1 key.right, .moveright			;Comprueba si se presiono la tecla der 
+	checkKey1 key.up, 	 .moveup			;Comprueba si se presiono la tecla arriba 
+	checkKey1 key.down,  .movedown			;Comprueba si se presiono la tecla abajo 
     
     ;Operadores de movimiento
     checkKey1 key.4, .endline    
@@ -43,22 +42,25 @@ startSubR
 
     jmp .end2
 
-   .selectUp:
-    ;Logica para seleccionar moviendo el cursor arriba
-    jmp .end
+	.moveright:					;mueve el cursor a la derecha
+		push dword 1
+		call cursor.moveH			
+		jmp .end
+	
+	.moveleft:					;mueve el cursor a la izquierda
+		push dword -1
+		call cursor.moveH
+		jmp .end
 
-    .selectDown:
-    ;Logica para seleccionar moviendo el cursor hacia abajo
-    jmp .end
-
-    .selectLeft:
-    ;Logica para seleccionar moviendo el cursor hacia la izq
-    jmp .end
-
-    .selectRight:
-    ;Logica para seleccionar moviendo el cursor hacia la derecha
-    jmp .end
-
+	.moveup:					;mueve el cursor hacia arriba
+		push dword -1
+		call cursor.moveV
+		jmp .end
+	
+	.movedown:					;mueve el cursor para abajo
+		push dword 1
+		call cursor.moveV
+		jmp .end
     .copy:
     ;Logica para copiar text
     jmp .end
