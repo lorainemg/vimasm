@@ -56,7 +56,7 @@ text.replace:
 	startSubR
 		mov ebx,text  			;ebx =text
 		add ebx,[cursor]		;ebx = text + cursor
-		cmp dword[ebx], 0x0d	;el caracter q voy a reemplazar es el de fin de linea?
+		cmp dword[ebx], ASCII.enter	;el caracter q voy a reemplazar es el de fin de linea?
 		jne .normal				;si no lo es, muevo el texto normal
 		
 		push dword[cursor]		;sino, pongo la posicion del cursor como parametro
