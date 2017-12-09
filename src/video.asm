@@ -1,10 +1,9 @@
 %include "video.mac"
 %include "tools.mac"
-; Frame buffer location
-%define FBUFFER 0xB8000
 
-; FBOFFSET(byte row, byte column)
-%macro FBOFFSET 2.nolist
+
+; buffer.position(byte row, byte column)
+%macro buffer.position 2.nolist
     xor eax, eax
     mov al, COLS
     mul byte %1
@@ -19,41 +18,124 @@ section .data
     format.text         db BG.BRIGHT|0xf
     format.selection    db 0x90
     format.search       db 0x00
+    format.enter      db BG.YELLOW
+    format.tap          db BG.RED
+
+    respawntimecursor dd 1 
 
     ;videoflags
     videoflags db 0
-    %define hidecursor 0x1  
-    %define respawncursor 0x2
-    %define hidesearch 0x4
+    %define hidecursor      1<<0  
+    %define hideselection   1<<1
+    %define hidesearch      1<<2
+    %define respawcursor    1<<3
+    ;video control
+    scroll dd 0      ;linea que marca el scroll
 
-    respawntimecursor db 1 
+    %define buffer.length 2000 
+    %define buffer.textlength 1920
+    %define buffer 0xB8000
 
-
+extern text
+extern cursor,lines.current
 
 section .text
 
-extern text
-extern cursor
 
 ;call:
-;call UpdateBuffer
-global UpdateBuffer
-UpdateBuffer:
-startSubR
-mov edi ,FBUFFER  ;edi = buffer
-mov esi ,text ;esi = text
-mov ecx ,2000     ;filas*culumnas
-cld               ;df =0
-mov ah,[format.text]
+;call video.Update
+global video.Update
+video.Update:
+    startSubR
+        call video.UpdateText
+   
+    .trycursor:
+        test videoflags,hidecursor
+        jz tryselection
+        call vid.UpdateCursor
+   
+    .tryselection:
+        test videoflags,hideselection
+        jz .trysearch
+        call vide.UpdateSelection
+   
+    .trysearch:
+        test videoflags,hidesearch
+        jz .end
+        call UpdateSearch
 
-.loop:            ;ciclo 
-lodsb             ;eax = actual linea del text
-stosw             ; movemos al buffer el Format + ASCII
-loop .loop        ;volver 
-
-mov eax,[cursor]
-shl eax,1
-mov dl,[FBUFFER + eax]
-mov dh,[format.cursor]
-mov [FBUFFER + eax],dx
+   .end:
 endSubR 0
+
+
+
+video.UpdateText:
+startSubR
+
+    mov esi,text
+    mov edi,buffer
+    mov ecx,24
+.rows:
+    push ecx
+    mov ecx,80
+.columns:
+    stosb               ;eax = ACSII
+    cmp al,ACSII.enter  ;si es enter entonces pinto enter
+    je .paintEnter
+
+    cmp al,ACSII.tap    ;si es tap entonces pinto taps
+    je paintTap
+
+    cmp al,0
+    je paintEmply
+
+
+    mov ah,format.text                 ;pinto ACSII
+    lodsw
+    loop .columns
+
+.endrow:
+    pop ecx
+    loop .rows
+    jmp .end
+
+.paintEmply:
+    mov al,'~' 
+    mov ah,format.text 
+    and ah,0x0f                         ;nnannarita negra
+    lodsw                               ;solo pinto una
+    xor al,al
+    rep lodsw                           ;termino fila
+    jmp .endrow
+
+.paintEnter:
+    mov ah,format.enter
+    ;lodsw
+    ;xor ax,ax
+    rep lodsw                           ;pintara el resto de la linea del formato 
+    jmp .endrow
+.paintTap:
+    jmp .columns
+
+.end:
+endSubR 0
+
+
+
+
+video.UpdateSelection:
+startSubR
+
+endSubR 0
+
+video.UpdateSearch:
+startSubR
+
+endSubR 0
+
+video.UpdateCursor:
+startSubR
+
+endSubR 0
+
+
