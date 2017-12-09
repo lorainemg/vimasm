@@ -13,6 +13,7 @@ section .bss
 	;trabajo con lineas
 	global lines.starts
 	lines.starts	resd 	800							;control de lineas :  <comienzo,cantidad> en funcion de bytes del text
+	global lines.lengths
 	lines.lengths 	resd 800
 section .data
 	
