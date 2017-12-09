@@ -131,7 +131,7 @@ text.moveforward:
 ;break
 	cld
 	.lp:
-		stosd
+		
 		inc eax
 		lodsd
 		loop .lp

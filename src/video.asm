@@ -75,13 +75,14 @@ startSubR
     mov esi,text
     mov edi,buffer
     mov ecx,24
+    cld
 .rows:
     push ecx
     mov ecx,80
 .columns:
-    stosb               ;eax = ACSII
+    lodsb               ;eax = ACSII
+  ;  break
     cmp al,ASCII.enter  ;si es enter entonces pinto enter
-    break
     je .paintEnter
 
     cmp al,ASCII.tab   ;si es tap entonces pinto taps
@@ -92,7 +93,7 @@ startSubR
 
 
     mov ah,[format.text]                 ;pinto ACSII
-    lodsw
+    stosw
     loop .columns
 
 .endrow:
@@ -104,20 +105,19 @@ startSubR
     mov al,'~' 
     mov ah,[format.text]
     and ah,0x0f                         ;nnannarita negra
-    lodsw                               ;solo pinto una
+    stosw                               ;solo pinto una
     xor al,al
-    rep lodsw                           ;termino fila
+    rep stosw                           ;termino fila
+    ; mov bl, [buffer]
+    ; break
     jmp .endrow
 
 .paintEnter:
     mov ah,[format.enter]
-    ;lodsw
-    ;xor ax,ax
-    rep lodsw                           ;pintara el resto de la linea del formato 
+    rep stosw                           ;pintara el resto de la linea del formato 
     jmp .endrow
 .paintTab:
     jmp .columns
-
 .end:
 endSubR 0
 
