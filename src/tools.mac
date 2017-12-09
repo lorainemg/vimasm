@@ -159,7 +159,5 @@ and %1,0x0000ffff
 %endmacro
 %endif
 
-
-
 %define ASCII.enter 0x0d
 %define ASCII.tab 0x09

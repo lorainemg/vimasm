@@ -16,7 +16,6 @@ section .bss
 	lines.lengths 	resd 800
 section .data
 	
-
 	global cursor
 	cursor 		dd		0			;la posicion del cursor
 	
@@ -27,6 +26,9 @@ section .data
 	GLOBAL lines.lastline
 	lines.lastline 	dd 		0		;la ultima linea que se ha escrito
 	moveV		dd		0		;el ultimo movimiento vertical
+
+	start dd  0
+	mode  dd  0
 
 section .text
 
@@ -330,8 +332,7 @@ lines.newline:
 		mov eax,[lines.current]
 		mov [lines.lengths + 4*(eax+1)],edx	;tamanno de la nueva linea = fin-cursor 
 		pop edx
-		mov [lines.lengths +4*eax],edx 		;tamanno de la linea partida = cursor-linea +1 (mas uno lo que este se annade luego)
-		
+		mov [lines.lengths +4*eax],edx 		;tamanno de la linea partida = cursor-linea +1 (mas uno lo que este se annade luego)	
 
 		push dword ASCII.enter
 		call text.insert
@@ -369,7 +370,7 @@ lines.newline:
 	;	 inc dword [lines.lengths + 4*eax]		;incremento valor de cantidad de caracteres ya que annadi enter
 		 
 		.end:
-	endSubR 4
+	endSubR 0
 
 
 
@@ -509,3 +510,14 @@ cursor.moveV:
 		.end:
 	endSubR 4
 
+;Empieza una seleccion
+;call:
+;push dword mode (0 normal, 1 linea, 2 bloque)
+global select.start
+select.start:
+	startSubR
+	mov eax, [cursor]
+	mov [start], eax
+	mov eax, [ebp+4]
+	mov [mode], eax
+	endSubR 4

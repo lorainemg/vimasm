@@ -18,9 +18,10 @@ global start.visual
 start.visual:
 startSubR
     mov eax, [ebp+4]
-    mov [mode], eax
+    ; mov [mode], eax
+    push eax
+    ;Llamar para empezar la seleccion
 endSubR 4
-
 
 global mode.visual
 mode.visual:
@@ -30,39 +31,32 @@ startSubR
     checkKey1 key.y, .copy
 
     ;Si se movio alguna tecla de movimiento
-    checkKey1 key.up,    .select
-    checkKey1 key.down,  .select
-    checkKey1 key.left,  .select
-    checkKey1 key.right, .select
+    checkKey1 key.up,    .selectUp
+    checkKey1 key.down,  .selectDown
+    checkKey1 key.left,  .selectLeft
+    checkKey1 key.right, .selectRight
     
     ;Operadores de movimiento
     checkKey1 key.4, .endline    
     checkKey1 key.6, .startline
     checkKey1 key.w, .endword
 
-    .exit:
-    ;Logica para salir del modo
+    jmp .end2
+
+   .selectUp:
+    ;Logica para seleccionar moviendo el cursor arriba
     jmp .end
 
-   .select:
-    ;Para ver el modo en que se entra
-    mov al, [mode]
-    cmp al, 0
-    je .normal
-    cmp al, 1
-    je .line
-    cmp al, 2
-    je .block
+    .selectDown:
+    ;Logica para seleccionar moviendo el cursor hacia abajo
     jmp .end
 
-    .normal:
-    ;Logica para seleccionar en modo normal
+    .selectLeft:
+    ;Logica para seleccionar moviendo el cursor hacia la izq
     jmp .end
-    .line:
-    ;Logica para seleccionar en modo linea
-    jmp .end
-    .block:
-    ;Logica para seleccionar en modo bloque
+
+    .selectRight:
+    ;Logica para seleccionar moviendo el cursor hacia la derecha
     jmp .end
 
     .copy:
@@ -70,14 +64,23 @@ startSubR
     jmp .end
 
     .endline:
-    ;Se mueve hasta el final de la linea
+    ;Selecciona hasta el final de la linea
     jmp .end
     .startline:
-    ;Se mueve hasta el inicio de linea
+    ;Selecciona hasta el inicio de linea
     jmp .end
     .endword:
-    ;Se mueve hasta el final de palabra
+    ;Selecciona hasta el final de palabra
     jmp .end
 
-.end
+    .exit:
+    ;Logica para salir del modo
+ 
+	.end:
+	;Update
+	call video.Update
+	
+    .end2:
+	call vim.update
+    jmp mode.visual
 endSubR 0

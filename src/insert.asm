@@ -85,7 +85,6 @@ mode.insert:
 	
 		.enter:
 		;Logica del enter
-			push dword[cursor]
 			call lines.newline	
 			jmp .end
 	
@@ -96,8 +95,8 @@ mode.insert:
 	.end:
 	;Update
 	call video.Update
+	
 	.end2:
 	call vim.update
-
 	jmp mode.insert
 ret

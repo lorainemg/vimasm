@@ -82,7 +82,6 @@ mode.replace:
 	
 		.enter:
 		;Logica del enter
-			push dword[cursor]
 			call lines.newline	
 			jmp .end    
 	
