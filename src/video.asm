@@ -168,7 +168,9 @@ video.UpdateCursor:
     push edx
     mov edx,eax
     mov eax,[cursor]
+   ; breake dword[lines.current], 1
     sub eax,edx
+    
     pop edx
     add edx,eax
 

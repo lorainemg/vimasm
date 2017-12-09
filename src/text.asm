@@ -336,7 +336,6 @@ lines.newline:
 		mov edx ,[cursor]
 		sub eax,edx					;calculo fin-cursor 
 		mov edx, eax 				;salvo fin-cursor
-		dec edx
 		
 		mov eax,[lines.current]
 		mov [lines.lengths + 4*(eax+1)],edx	;tamanno de la nueva linea = fin-cursor
@@ -348,7 +347,6 @@ lines.newline:
 		push eax
 		call lines.endline					;busco el final de la linea actual
 		mov edx,eax							;edx = final
-		inc edx								;lo incremento
 		mov eax,[lines.current]				;eax = linea actual
 		mov dword[lines.starts + 4*(eax+1)],edx ;inicio de mi nueva linea:final de la otra + 1
 
@@ -512,11 +510,11 @@ select.start:
 ;Selecciona en modo linea
 ;call:
 ;call select.line
-select.line:
+copy:
 startSubR
 	push dword[start]				;pongo donde empieza mi seleccion como parametro
 	call lines.line					;pregunto por la linea de mi seleccion
-	mov edx, [lines.start+4*eax]	;busco el principio de esa linea
+	mov edx, [lines.starts+4*eax]	;busco el principio de esa linea
 
 	push dword[lines.current]		;pongo mi linea actual como parametro
 	call lines.endline				;busco el final de mi linea actual
