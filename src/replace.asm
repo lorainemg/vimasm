@@ -6,8 +6,8 @@
 
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
-	extern text.write,text.newline, text.endline, text.move
-	extern lastline, lines, currentline
+	extern text.replace,text.newline, lines.endline
+	extern lastline, lines, lines.current
 	extern text
 
 ;main externs
@@ -21,7 +21,7 @@ mode.replace:
 		je .commad					;entonces se salta hasta el final
 		
 		push eax					;se guarda el caracter en la pila como parametro de text.write
-		text.replace
+		call text.replace
 		jmp .end                    
 
 	.commad:
@@ -67,6 +67,7 @@ mode.replace:
 
 		.tab:
 		;Logica de tab
+			call tab
 			jmp .end
 	
 		.backspace:
@@ -75,6 +76,7 @@ mode.replace:
 	
 		.enter:
 		;Logica del enter
+			break
 			call enter
 			jmp .end    
 	
@@ -104,14 +106,19 @@ startSubR
 	div dl								;divido pos del cursor con 80
 	cmp ah, 0							;el resto es 0?
 	jne .end							;si no lo es, entonces ya termino
-	mov eax, [currentline]				;de serlo, entonces hago eax = linea actual
+	mov eax, [lines.current]			;de serlo, entonces hago eax = linea actual
 	dec eax								;busco la linea anterior a la actual
 	push eax							;la pongo como parametro
 	call lines.endline					;y pregunto su fin de linea
 	mov [cursor], eax					;actualizo el cursor, para que se ponga en el fin de linea de la palabra
-	dec dword[currentline]				;decremento la linea actual
+	dec dword[lines.current]			;decremento la linea actual
 	.end:
 endSubR 0
+
+tab:
+	push dword ASCII.tab
+	call text.replace
+	ret
 
 ;Logica para ejecutar el enter
 ;call:

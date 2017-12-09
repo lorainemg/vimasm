@@ -7,7 +7,7 @@
 
 ;text externs
 	extern cursor.moveH, cursor.moveV
-	extern text.write,text.newline
+	extern text.insert,text.newline
 	extern lastline
 	extern text
 
@@ -26,7 +26,7 @@ mode.insert:
 		je .commad					;entonces se salta hasta el final
 
 		push eax					;se guarda el caracter en la pila como parametro de text.write
-		call text.write				;se procede a escribir el caracter en el texto	call UpdateBuffer
+		call text.insert				;se procede a escribir el caracter en el texto	call UpdateBuffer
 		jmp .end
 
 
@@ -82,14 +82,7 @@ mode.insert:
 	
 		.enter:
 		;Logica del enter
-			xor eax,eax
-			mov ax, [lastline]
-			
-			;inc ax
 
-			push eax
-			call text.newline
-			
 			jmp .end
 	
 		.exitmode:
