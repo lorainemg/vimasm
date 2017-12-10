@@ -14,13 +14,13 @@
 
 section .bss
     modetext resb 10
-
+    buffer.textcache    resw 0xf00
 
 section .data
     ;Formats
     format.cursor       db BG.CYAN|0xf
     format.text         db BG.BRIGHT|0xf
-    format.selection    db 0x90
+    format.select       db 0x90
     format.search       db 0x00
     format.enter        db BG.YELLOW
     format.tap          db BG.RED
@@ -28,6 +28,7 @@ section .data
     respawntimecursor   dd 1 
 
     ;videoflags
+    global videoflags
     videoflags          db 0
     %define hidecursor      1<<0  
     %define hideselection   1<<1
@@ -36,6 +37,7 @@ section .data
     
     ;video control
     scroll              dd 0      ;linea que marca el scroll
+    
     buffer.width        dd   80
     buffer.height       dd   24 
     %define buffer.length       2000 
@@ -44,7 +46,8 @@ section .data
     %define buffer.lastrow     0xb8f00
 ;externs del texto
 extern text
-extern cursor,lines.current,lines.lengths,lines.endline,lines.startsline,lines.endline
+extern cursor,lines.current,lines.lengths,lines.endline,lines.startsline,lines.endline,lines.starts,lines.line
+extern select.start,select.mode
 
 
 section .text
@@ -56,35 +59,33 @@ global video.Update
 video.Update:
     startSubR
         call video.UpdateText
-   
-        mov al, [videoflags]
+        mov dl, [videoflags]
+    
     .trycursor:
-        test al,  hidecursor
+        test dl,  hidecursor
         jnz .tryselection
         call video.UpdateCursor
-   
+    
     .tryselection:
-        test al, hideselection
+        test dl, hideselection
         jnz .trysearch
         call video.UpdateSelection
    
     .trysearch:
-        test al, hidesearch
+        test dl, hidesearch
         jnz .end
         call video.UpdateSearch
-  ;  call video.UpdateInfo 
+
+    
+
    .end:
+   call video.UpdateBuffer
 endSubR 0
 
-
-video.UpdateText:
-        startSubR
-      ;  break
-        mov eax,[scroll]
-        push eax
-        call lines.startsline
+video.UpdateBuffer:
+  startSubR
         
-        lea esi,[text+eax]
+        mov esi,buffer.textcache
         mov edi,buffer
         mov ecx,[buffer.height]
         cld
@@ -92,18 +93,15 @@ video.UpdateText:
         push ecx
         mov ecx,[buffer.width]
     .columns:
-        lodsb               ;eax = ACSII
+        lodsw               ;eax = ASCII
         cmp al,ASCII.enter  ;si es enter entonces pinto enter
         je .paintEnter
 
         cmp al,ASCII.tab   ;si es tap entonces pinto taps
         je .paintTab
-
         cmp al,0
         je .paintEmpty
 
-
-        mov ah,[format.text]                 ;pinto ACSII
         stosw
         loop .columns
 
@@ -114,29 +112,136 @@ video.UpdateText:
 
     .paintEmpty:
         mov al,'~' 
-        mov ah,[format.text]
-        and ah,0x0f0                         ;nnannarita negra
         stosw                               ;solo pinto una
         dec ecx
         xor al,al
         rep stosw                           ;termino fila
-        ; mov bl, [buffer]
-        ; break
         jmp .endrow
 
     .paintEnter:
-        mov ah,[format.enter]
         rep stosw                           ;pintara el resto de la linea del formato 
         jmp .endrow
     .paintTab:
         jmp .columns
     .end:
-endSubR 0
+    
+endSubR 0 
 
-video.UpdateSelection:
+video.UpdateText:
     startSubR
+    mov eax,[scroll]
+    push eax 
+    call lines.startsline
 
+    lea esi,[text +eax]
+    mov edi, buffer.textcache
+    mov ecx, buffer.textlength
+    cld
+
+    .lp:
+    lodsb 
+    cmp al,ASCII.enter
+    je .enter 
+    mov ah,[format.text]
+    jmp .stos 
+    .enter:
+    mov ah,[format.enter]
+
+    .stos:
+    stosw
+    loop .lp
+    
 endSubR 0
+
+ 
+video.UpdateSelection:
+	startSubR
+	mov eax,[select.start]
+	mov edx,[cursor]
+;	break
+    cmp eax,edx
+	jbe .mode
+	push eax
+    push edx
+    pop eax
+    pop edx 
+
+    .mode:
+	push edx
+    push eax
+
+	cmp dword [select.mode],0
+	jne .tryline
+	call video.UpdateSelection.normal
+    jmp .end
+    
+    .tryline:
+    cmp dword [select.mode],1
+	jne .tryblock
+	call video.UpdateSelection.line
+    jmp .end
+    .tryblock:
+    ; pop eax
+    ; pop eax
+    ;	call select.copy.block
+.end:
+endSubR 0
+
+
+video.UpdateSelection.normal:
+startSubR
+	mov eax,[ebp+4]
+	mov edx,[ebp+8]
+	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
+	mov ecx, edx					;la cantidad de movimientos q hago:					
+	sub ecx, eax					;
+    inc ecx
+	lea edi,[buffer.textcache+2*eax]
+    lea esi,[buffer.textcache+2*eax]
+    cld
+	.lp:
+    lodsw
+    mov ah,[format.select]
+	stosw
+    loop .lp
+  ;  break
+endSubR 8
+
+;Selecciona en modo linea
+	;call:
+	;push dword end ebp+8
+	;push dword start ebp+4
+	;call select.line
+video.UpdateSelection.line:
+startSubR
+	push dword[ebp+4]				;pongo donde empieza mi seleccion como parametro
+	call lines.line					;pregunto por la linea de mi seleccion
+	mov edx, [lines.starts+4*eax]	;busco el principio de esa linea
+
+
+	push dword[ebp+8]		        ;pongo mi linea actual como parametro
+	call lines.line                 ;busco la linea de mi final como parametro
+	push eax                        ;pongo la lina como parametro
+	call lines.endline				;busco el final de la linea
+    dec eax 
+	push eax                        ;intercambio los parametros (porque Tony quiere que eax sea el principio)
+    push edx
+    pop eax
+    pop edx
+	;Se copiaria, desde el principio de la linea de inicio hasta el final de la linea final
+	mov ecx, edx					;la cantidad de movimientos q hago:					
+	sub ecx, eax					;
+	inc ecx
+	lea esi, [buffer.textcache+2*eax]
+	lea edi, [buffer.textcache+2*eax]
+    cld
+	.lp:
+        lodsw
+        mov ah,[format.select]
+	    stosw
+        loop .lp
+endSubR 8
+
 
 video.UpdateSearch:
     startSubR
@@ -145,84 +250,16 @@ endSubR 0
 
 video.UpdateCursor:
     startSubR
-    
-    mov ecx,-1
-    mov edx,0
-    .nextline:
-    inc ecx
-    mov eax,[scroll]
-    add eax,ecx                 
-    cmp eax,[lines.current]  
-    je .length
-    mov eax,[lines.lengths +4*eax]
-    .nextrow:
-    add edx,[buffer.width]
-    sub eax,[buffer.width]
-    jl .nextline
-    jmp .nextrow
-    .length:
-    push edx
-
-    mov eax,[lines.current] 
-    push eax
+    push dword [scroll] 
     call lines.startsline
-    
-
-    mov edx,eax
-    mov eax,[cursor]
-    sub eax,edx
-    
-    pop edx
-    add edx,eax
-
-    mov ah,[format.cursor]
-    mov al,[buffer + 2*edx]             ;
-    mov [buffer + 2*edx],ax
+    mov edx,[cursor]
+    sub edx,eax
+    mov al,[format.cursor]
+    mov [buffer.textcache + 2*edx +1],al
 endSubR 0
 
 
-video.UpdateInfo:
-        startSubR
-
-    mov ebx,buffer.lastrow
-
-    mov ecx,4
-    .lp:
-    push ecx
-    push dword [lines.current]
-    call buildNumberToACSII 
-    xor ah,ah
-    add ebx,2
-    mov [ebx],ax
-    loop .lp
-
-    add ebx,2
-    mov byte [ebx],0x0f
-    mov byte [ebx+1],","
-
-    mov ecx,4
-    .lp2:
-    push ecx
-    push dword [lines.current]
-    call buildNumberToACSII 
-    xor ah,ah
-    add ebx,2
-    mov [ebx],ax
-    loop .lp2
-    endSubR 0
 
 
 
-    ;comvierte en ACSII un numero de 4 cifras y lo pone en la pila en orden
-    ;call:
-    ;push dword digit       ebp+8
-    ;push dword number      ebp+4
-    ;call buildNumberToACSII
-    buildNumberToACSII: 
-    startSubR
-    mov eax,[ebp+4]
-    mov edx,10
-    div dl
-    add eax,30
-    and eax,0xff
-    endSubR 8
+

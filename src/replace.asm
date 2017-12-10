@@ -87,6 +87,7 @@ mode.replace:
 	
 		.exitmode:
 		;Logica para salir del modo
+		ret
 			jmp .end
 
 	.end:

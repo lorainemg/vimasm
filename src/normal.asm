@@ -5,8 +5,10 @@
 extern isKey1,isKey2,isKey3, getChar 
 ;text externs
 extern cursor.moveH, cursor.moveV
+;modes externs
+extern mode.insert, mode.replace, mode.visual, start.visual, select.paste
 ;main externs
-extern vim.update
+extern vim.update, video.Update, videoflags
 
 
 section .text
@@ -14,7 +16,6 @@ section .text
 
 global mode.normal
 mode.normal:
-	
 	;Controles de movimiento:
 		checkKey1 key.left,  .moveleft			;si se presiono la tecla izq 
 		checkKey1 key.right, .moveright			;si se presiono la tecla der 
@@ -27,8 +28,8 @@ mode.normal:
 		
 	;Cambiar de modo:
 		checkKey1 key.i, .insertmode			;si se presiono i
-		checkKey1 key.v, .visualmode 			;si se presiono v
 		checkKey2 key.shiftL, key.v, .visualLinemode	;si se presiono shift+v
+		checkKey1 key.v, .visualmode 			;si se presiono v
 	
 
 	;Optativos:
@@ -53,8 +54,6 @@ mode.normal:
 	
 
 			jmp .end
-
-
 	;##########################################################################################################################################################
 	;##########################################################################################################################################################
 
@@ -78,30 +77,39 @@ mode.normal:
 			call cursor.moveV
 			jmp .end
 
-
-
 	;Cambiar de modo:
 		.insertmode:
 		;Logica para cambiar al modo insertar
+			call mode.insert
 			jmp .end
 		.visualmode:
 		;Logica para cambiar al modo visual con seleccion estandar
+			push dword 0
+			call start.visual
+			call mode.visual
 			jmp .end
 		.visualLinemode:
 		;Logica para cambiar al modo visual con seleccion en modo linea
+			push dword 1
+			call start.visual
+			call mode.visual
 			jmp .end
 		.visualBlockmode:
 		;Logica para cambiar al modo visual con seleccion en modo bloque
+			push dword 2
+			call start.visual
+			call mode.visual
 			jmp .end
 		.replacemode:
 		;Logica para cambiar al modo reemplazar
+		call mode.replace
 			jmp .end
-
 
 
 	;Comandos especiales:
 		.paste:						
 		;Logica para pegar
+			call select.paste
 			jmp .end
 		.undo:						
 		;Logica para deshacer una accion
@@ -116,9 +124,11 @@ mode.normal:
 		;Logica para el comando punto
 			jmp .end
 
-
-
 	.end:
 	;Update
+	or byte[videoflags], 1 << 1
+	call video.Update
+	.end2:
 	call vim.update
+	jmp mode.normal
 	ret

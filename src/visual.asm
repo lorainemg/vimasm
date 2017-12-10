@@ -4,11 +4,11 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, getChar 
 ;text externs
-extern cursor, cursor.moveH, cursor.moveV, select.mark
+extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy
 ;tratamiento de lineas:
 extern lines.startsline, lines.endline, lines.endword, lines.current
 ;main externs
-extern vim.update, video.Update
+extern vim.update, video.Update, videoflags
 
 section .text
 ;call:
@@ -19,13 +19,12 @@ startSubR
     mov eax, [ebp+4]
     push eax
     call select.mark
+    xor byte[videoflags], 1<< 1
 endSubR 4
 
 global mode.visual
 mode.visual:
-startSubR
     checkKey1 key.esc, .exit
-
     checkKey1 key.y, .copy
 
     ;Si se movio alguna tecla de movimiento
@@ -62,12 +61,14 @@ startSubR
 		jmp .end
     .copy:
     ;Logica para copiar text
+        call select.copy
     jmp .end
 
     .endline:
     ;Selecciona hasta el final de la linea
         push dword[lines.current]
         call lines.endline
+        dec eax
         mov [cursor], eax
     jmp .end
     
@@ -85,8 +86,9 @@ startSubR
     jmp .end
 
     .exit:
+       jmp .finish
     ;Logica para salir del modo
- 
+    
 	.end:
 	;Update
 	call video.Update
@@ -94,4 +96,5 @@ startSubR
     .end2:
 	call vim.update
     jmp mode.visual
-endSubR 0
+    .finish:
+ret

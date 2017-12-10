@@ -2,7 +2,7 @@
 
 extern UpdateKeyboard, UpdateBuffer
 extern text.startConfig
-extern mode.normal,mode.insert, mode.replace
+extern mode.normal,mode.insert, mode.replace, mode.visual
 extern calibrate
 
 
@@ -20,7 +20,7 @@ global vim.start
     call text.startConfig
   ;llamo a la funcion especial que abre el comienzo de la pantalla inicial, y sus respectivas opciones.
     
-    call mode.insert
+    call mode.normal
   ;salida a modo normal  
     ;call mode.normal
 
