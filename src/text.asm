@@ -299,6 +299,35 @@ lines.endword:
 	endSubR 4
 
 
+;Borra desde el cursor hasta el principio de su linea
+;push dword position: ebp + 4
+;call eraseline
+global eraseline
+eraseline:
+	startSubR
+		push dword[lines.current]		
+		call lines.startsline			;pregunto por el principio de mi linea actual
+		mov ecx, [cursor]				;guardo la posicion del cursor
+		sub ecx, eax					;las veces q me voy a mover: cursor-start
+		push ecx
+		call erasetimes					;llamo para borrar las veces calculadas
+	endSubR 4
+
+;Borra en el texto a partir del cursor un numero determinado de veces
+;call:
+;push dword times: ebp + 4
+global erasetimes
+erasetimes:
+	startSubR
+		mov ecx, [ebp+4]				;pongo como contador lo especificado
+	;	break
+		.lp:
+			push dword[cursor]			
+			call text.movebackward		;elimino desde la posicion del cursor
+			loop .lp					;repito el ciclo tantas veces como las especificadas
+			.end:
+	endSubR 4
+
 ;Determina la linea que ocupa una posicion determinada
 	;call:
 	;push dword posicion: ebp + 4

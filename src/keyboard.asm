@@ -242,8 +242,8 @@ endSubR 0
 GLOBAL isLetterChar
 isLetterChar:
 	startSubR
-  		mov edx,[ebp + 4]
-		inRange 0x61,0x7a,edx
+  		mov dl,[ebp + 4]
+		inRange 0x61,0x7a,dl
 	endSubR 4 
 
 
@@ -296,12 +296,12 @@ GLOBAL isNum
 isNum:
 	startSubR
 		mov al,[lastScan]
-		inRange 48, 57, eax
+		inRange 48, 57, al
 		cmp eax, 0
 		je .end
 		xor eax, eax
 		call getChar
-		.end
+		.end:
 	endSubR 0
 
 ;Determina si una non-control tecla esta presionada o no

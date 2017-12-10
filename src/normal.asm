@@ -5,12 +5,29 @@
 extern isKey1,isKey2,isKey3, isNum, getChar
 ;text externs
 extern cursor.moveH, cursor.moveV, cursor.moveline, cursor
-extern lines.last, lines.endword, lines.current
+extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes
 extern select.copy.normal, copy.line
 ;modes externs
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste
 ;main externs
 extern vim.update, video.Update, videoflags
+
+;Para realizar el control del los operadores:
+;Tine como parametros una funcion que recibe 2 parametros:primero las veces
+;que se repite una operacion y luego el modo en que se realiza la operacion
+;call: operator parameter, function
+%macro operator 2
+	inRange 48, 57, byte[lastkey+1]		;hay un numero en lastkey?
+	cmp eax, 0						;el valor de la ultima tecla es un numero? 
+	je %%.start						;si no lo es, entonces simplemente voy al final del textos
+	xor eax, eax
+	mov al, [lastkey+1]
+	sub eax, 49
+	%%.start:
+	push eax
+	push dword %1
+	call %2
+%endmacro
 
 section .data
 lastkey db 0
@@ -164,25 +181,21 @@ mode.normal:
 		.copy:
 		;Logica para copiar con repeticion + operadores de movimiento
 			cmp byte[lastkey], 'y'
-			je .copyline
+			je .line
 			mov byte[lastkey], 'y'
 			jmp .end
-			.copyline:
-				inRange 48, 57, byte[lastkey+1]		;hay un numero en lastkey?
-				cmp eax, 0						;el valor de la ultima tecla es un numero? 
-				je .start						;si no lo es, entonces simplemente voy al final del textos
-				xor eax, eax
-				mov al, [lastkey+1]
-				sub eax, 48
-				.start:
-				push eax
-				push dword 1
-				call copy
+			.line:	
+				operator 1, copyOperator
 			jmp .end
 		.erase:
 		;Logica para borrar con repeticion + operadores de movimiento
-			mov byte[lastkey], 'e'
+			cmp byte[lastkey], 'd'
+			je .full
+			mov byte[lastkey], 'd'
 			jmp .end
+			.full:
+				operator 1, eraseOperator
+			jmp .end			
 		.replace:
 		;Logica para reemplazar con repeticion + operadores de movimiento
 			mov byte[lastkey], 'r'
@@ -195,22 +208,13 @@ mode.normal:
 		;Logica para realizar la operacion hacia el inicio de una linea
 			jmp .end
 		.endword:
-		;Logica para realizar la operacion hacia el final de una linea
+		;Logica para realizar la operacion hacia el final de una palabra
 			xor ebx, ebx
 			mov bl, [lastkey]
 			cmp byte[lastkey], 'y'
 			je .yank
 			.yank:
-				inRange 48, 57, byte[lastkey+1]		;hay un numero en lastkey?
-				cmp eax, 0						;el valor de la ultima tecla es un numero? 
-				je .starty						;si no lo es, entonces simplemente voy al final del textos
-				xor eax, eax
-				mov al, [lastkey+1]
-				sub eax, 48
-				.starty:
-				push eax
-				push dword 0
-				call copy
+				operator 0, copyOperator
 			jmp .end
 
 		.num:
@@ -242,15 +246,13 @@ ret
 ;call:
 ;push dword times: ebp + 8
 ;push dword mode: ebp + 4	(0 palabra, 1 linea)
-copy:
+copyOperator:
 	startSubR
 		mov ecx, [ebp+8]
 		mov eax, [ebp+4]
 		cmp eax, 1
 		je .modeline
 		mov eax, [cursor]
-		cmp ecx, 0
-		jne .lp1
 		inc ecx
 	.lp1:							;para copiar varias palabras calculo el total de cuato me voy a mover:
 		push eax					;pongo la posicion en la que estoy ahora como parametro
@@ -266,9 +268,48 @@ copy:
 		mov eax, [lines.current]	;eax = linea actual
 		mov edx, eax				
 		add edx, ecx				;edx = linea actual + cantidad de veces que se repite la accion
-		dec edx
+
 		push edx					;el final de la copia sera edx
 		push eax					;el inicio eax
 		call copy.line				;y llamo para copiar
 	.end:
 	endSubR 8
+
+;call:
+;push dword times: ebp + 8
+;push dword mode: ebp + 4 (0 palabra, 1 linea)
+eraseOperator:
+	startSubR
+		mov ecx, [ebp + 8]
+		mov eax, [ebp + 4]
+		cmp eax, 1
+		je .modeline
+		
+		.modeline:
+		push dword[cursor]
+		push dword[lines.current]
+		push ecx
+		call eraselines
+		pop dword[lines.current]
+		pop dword[cursor]
+	endSubR 8
+
+;call
+;push dword times
+eraselines:
+	startSubR
+		mov edx, [lines.current]	;mi linea actual
+		mov eax, [lines.starts+4*edx]
+		push eax					;guardo el valor del principio
+		add edx, [ebp + 4]			;le adiciono a la linea actual la cantidad de lineas que voy a copiar
+		push edx					;para acceder a la linea final
+		call lines.endline			;busco el final de esa linea
+		mov [cursor], eax
+		mov ecx, eax				;ecx = pos final
+		pop eax
+		sub ecx, eax				;ecx = pos final - pos inicial
+		dec ecx
+		push ecx
+		call erasetimes				;llamo para borrar las veces calcualdas
+	endSubR 4
+

@@ -8,7 +8,7 @@
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
 	extern text.insert,lines.newline
-	extern lines.current, lines.startsline
+	extern lines.current, lines.startsline, erasetimes, eraseline
 	extern text, text.movebackward, text.moveforward
 
 
@@ -145,28 +145,3 @@ eraseword:
 		push ecx
 		call erasetimes
 	endSubR 0
-
-;Borra desde el cursor hasta el principio de su linea
-global eraseline
-eraseline:
-	startSubR
-		push dword[lines.current]		
-		call lines.startsline			;pregunto por el principio de mi linea actual
-		mov ecx, [cursor]				;guardo la posicion del cursor
-		sub ecx, eax					;las veces q me voy a mover: cursor-start
-		push ecx
-		call erasetimes					;llamo para borrar las veces calculadas
-	endSubR 0
-
-;Borra en el texto a partir del cursor un numero determinado de veces
-;call:
-;push dword times: ebp + 4
-erasetimes:
-	startSubR
-		mov ecx, [ebp+4]				;pongo como contador lo especificado
-		.lp:
-			push dword[cursor]			
-			call text.movebackward		;elimino desde la posicion del cursor
-			loop .lp					;repito el ciclo tantas veces como las especificadas
-			.end:
-	endSubR 4
