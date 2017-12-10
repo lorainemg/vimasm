@@ -16,7 +16,7 @@ section .bss
 	global lines.lengths
 	lines.lengths 	resd 800
 
-	copy			resb	500
+	select.cache		resb	65535
 section .data
 	global cursor
 	cursor 		dd		0			;la posicion del cursor
@@ -29,8 +29,11 @@ section .data
 	lines.lastline 	dd 		0		;la ultima linea que se ha escrito
 	moveV		dd		0		;el ultimo movimiento vertical
 
-	start dd  0
-	mode  dd  0
+	select.start dd  0
+	select.mode  dd  0
+	%define select.mode.normal 0
+	%define select.mode.line 1
+	%define select.mode.block 2
 section .text
 
 
@@ -507,24 +510,81 @@ select.start:
 		mov [mode], eax				;copio el modo que se pasa como parametro
 	endSubR 4
 
-;Selecciona en modo linea
-;call:
-;call select.line
-copy:
+
+select.copy:
 startSubR
-	push dword[start]				;pongo donde empieza mi seleccion como parametro
+mov eax,[select.start]
+mov edx,[cursor]
+cmp eax,edx
+jbe .mode
+xchg eax,edx 
+
+push eax
+push edx
+.mode:
+
+cmp dword [select.mode],select.mode.normal
+jne .tryline
+call select.copy.normal
+
+.tryline:
+cmp dword [select.mode],select.mode.line
+jne .tryblock
+call select.copy.line
+
+.tryblock:
+call select.copy.block
+
+
+
+
+endSubR 0
+
+select.copy.normal:
+startSubR
+	mov eax,[ebp+4]
+	mov edx,[ebp+8]
+	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
+	mov ecx, edx					;la cantidad de movimientos q hago:					
+	sub ecx, eax					;
+	
+	lea esi, [text+eax]
+	mov edi, select.cache
+	rep movsb
+	xor al,al
+	stosb
+endSubR 8
+
+;Selecciona en modo linea
+	;call:
+	;push dword end ebp+8
+	;push dword start ebp+4
+	;call select.line
+select.copy.line:
+startSubR
+	push dword[ebp+4]				;pongo donde empieza mi seleccion como parametro
 	call lines.line					;pregunto por la linea de mi seleccion
 	mov edx, [lines.starts+4*eax]	;busco el principio de esa linea
 
-	push dword[lines.current]		;pongo mi linea actual como parametro
-	call lines.endline				;busco el final de mi linea actual
 
+	push dword[ebp+8]		;pongo mi linea actual como parametro
+	call lines.line
+	push eax 
+	call lines.endline				;busco el final de mi linea actual
+	xchg eax,edx
 	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
-	mov ecx, eax					;la cantidad de movimientos q hago:					
-	sub ecx, edx					;
+	mov ecx, edx					;la cantidad de movimientos q hago:					
+	sub ecx, eax					;
 	
-	lea esi, [text+edx]
-	mov edi, copy
+	lea esi, [text+eax]
+	mov edi, select.cache
 	rep movsb
+	xor al,al
+	stosb
+endSubR 8
+
+
+select.copy.block:
+startSubR
 
 endSubR 0
