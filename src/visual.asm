@@ -4,7 +4,7 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, getChar 
 ;text externs
-extern cursor.moveH, cursor.moveV, select.start
+extern cursor.moveH, cursor.moveV, select.mark
 ;main externs
 extern vim.update, video.Update
 
@@ -20,7 +20,7 @@ startSubR
     mov eax, [ebp+4]
     mov [mode], eax
     push eax
-    call select.start
+    call select.mark
 endSubR 4
 
 global mode.visual

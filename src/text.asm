@@ -501,13 +501,13 @@ cursor.moveV:
 ;Empieza una seleccion
 ;call:
 ;push dword mode (0 normal, 1 linea, 2 bloque)
-global select.start
-select.start:
+global select.mark
+select.mark:
 	startSubR
 		mov eax, [cursor]
-		mov [start], eax			;la posicion del cursor es el principio de mi seleccion
+		mov  [select.start], eax			;la posicion del cursor es el principio de mi seleccion
 		mov eax, [ebp+4]			
-		mov [mode], eax				;copio el modo que se pasa como parametro
+		mov [select.mode], eax				;copio el modo que se pasa como parametro
 	endSubR 4
 
 
