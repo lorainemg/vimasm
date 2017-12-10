@@ -126,7 +126,6 @@ section .data
 	keyflags 	db 0 ;control flag var 
    	lastScan 	db 0
 
-
 section .text
 
 
@@ -245,7 +244,7 @@ isLetterChar:
 	startSubR
   		mov edx,[ebp + 4]
 		inRange 0x61,0x7a,edx
-endSubR 4 
+	endSubR 4 
 
 
 ;determina si una tecla de control esta activada
@@ -289,6 +288,20 @@ isControl:
 	.end:
 endSubR 4
 
+;Determina si se presiono un numero
+;call:
+;call isNum
+;return: eax -> 0 si no se presiono un numero, el ASCII del numero que se presiono
+GLOBAL isNum
+isNum:
+	startSubR
+		mov al,[lastScan]
+		inRange 48, 57, eax
+		cmp eax, 0
+		je .end
+		call getChar
+		.end
+	endSubR 0
 
 ;Determina si una non-control tecla esta presionada o no
 	;call:

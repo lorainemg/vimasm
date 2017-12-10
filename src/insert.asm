@@ -8,7 +8,7 @@
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
 	extern text.insert,lines.newline
-	extern lastline, lines.current, lines.startsline
+	extern lines.current, lines.startsline
 	extern text, text.movebackward, text.moveforward
 
 

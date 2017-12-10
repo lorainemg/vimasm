@@ -129,10 +129,6 @@ ret %1
 	%endmacro
 
 
-
-
-
-
 %macro cleanHReg 1
 and %1,0x0000ffff
 %endmacro
@@ -157,6 +153,17 @@ and %1,0x0000ffff
 	cmp eax, 1					;si se presiono
 	je %3						;entonces salta para la etiqueta especificada
 %endmacro
+
+;Comprueba si se presiono un numero, y si se hizo salta para la etiqueta especificada
+;checkNum label
+;tiene en eax el ASCII del numero presionado
+%macro checknum 1
+	call isNum					;comprueba si la ultima letra que se presiono es un numero
+	cmp eax, 0					;es eax = 0?
+	;break
+	jne %1						;si no lo es, entonces es un numero
+%endmacro
+
 %endif
 
 %define ASCII.enter 0x0d

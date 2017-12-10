@@ -7,7 +7,7 @@
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
 	extern text.replace,lines.newline, lines.endline
-	extern lastline, lines, lines.current
+	extern lines, lines.current
 	extern text
 
 ;main externs
@@ -20,11 +20,6 @@ mode.replace:
 		cmp ax, 0 					;si no se presiona ninguna tecla
 		je .commad					;entonces se salta hasta el final
 		
-		; cmp eax, 0x0d
-		; je .enter
-		; cmp eax, ASCII.tab
-		; je .tab
-
 		push eax					;se guarda el caracter en la pila como parametro de text.write
 		call text.replace
 		jmp .end                    
