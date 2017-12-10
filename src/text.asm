@@ -16,7 +16,7 @@ section .bss
 	global lines.lengths
 	lines.lengths 	resd 800
 
-	copy			resb	500
+	select.cache		resb	65535
 section .data
 	global cursor
 	cursor 		dd		0			;la posicion del cursor
@@ -29,8 +29,8 @@ section .data
 	lines.lastline 	dd 		0		;la ultima linea que se ha escrito
 	moveV		dd		0		;el ultimo movimiento vertical
 
-	start dd  0
-	mode  dd  0
+	select.start dd  0
+	select.mode  dd  0
 section .text
 
 
