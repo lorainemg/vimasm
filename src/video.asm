@@ -156,19 +156,20 @@ video.UpdateCursor:
     je .length
     mov eax,[lines.lengths +4*eax]
     .nextrow:
-    add edx,80
-    sub eax,80
+    add edx,[buffer.width]
+    sub eax,[buffer.width]
     jl .nextline
     jmp .nextrow
     .length:
+    push edx
 
     mov eax,[lines.current] 
     push eax
     call lines.startsline
-    push edx
+    
+
     mov edx,eax
     mov eax,[cursor]
-   ; breake dword[lines.current], 1
     sub eax,edx
     
     pop edx
@@ -181,47 +182,47 @@ endSubR 0
 
 
 video.UpdateInfo:
+        startSubR
+
+    mov ebx,buffer.lastrow
+
+    mov ecx,4
+    .lp:
+    push ecx
+    push dword [lines.current]
+    call buildNumberToACSII 
+    xor ah,ah
+    add ebx,2
+    mov [ebx],ax
+    loop .lp
+
+    add ebx,2
+    mov byte [ebx],0x0f
+    mov byte [ebx+1],","
+
+    mov ecx,4
+    .lp2:
+    push ecx
+    push dword [lines.current]
+    call buildNumberToACSII 
+    xor ah,ah
+    add ebx,2
+    mov [ebx],ax
+    loop .lp2
+    endSubR 0
+
+
+
+    ;comvierte en ACSII un numero de 4 cifras y lo pone en la pila en orden
+    ;call:
+    ;push dword digit       ebp+8
+    ;push dword number      ebp+4
+    ;call buildNumberToACSII
+    buildNumberToACSII: 
     startSubR
-
-mov ebx,buffer.lastrow
-
-mov ecx,4
-.lp:
-push ecx
-push dword [lines.current]
-call buildNumberToACSII 
-xor ah,ah
-add ebx,2
-mov [ebx],ax
-loop .lp
-
-add ebx,2
-mov byte [ebx],0x0f
-mov byte [ebx+1],","
-
-mov ecx,4
-.lp2:
-push ecx
-push dword [lines.current]
-call buildNumberToACSII 
-xor ah,ah
-add ebx,2
-mov [ebx],ax
-loop .lp2
-endSubR 0
-
-
-
-;comvierte en ACSII un numero de 4 cifras y lo pone en la pila en orden
-;call:
-;push dword digit       ebp+8
-;push dword number      ebp+4
-;call buildNumberToACSII
-buildNumberToACSII: 
-startSubR
-mov eax,[ebp+4]
-mov edx,10
-div dl
-add eax,30
-and eax,0xff
-endSubR 8
+    mov eax,[ebp+4]
+    mov edx,10
+    div dl
+    add eax,30
+    and eax,0xff
+    endSubR 8

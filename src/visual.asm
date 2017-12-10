@@ -4,12 +4,11 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, getChar 
 ;text externs
-extern cursor.moveH, cursor.moveV, select.start
+extern cursor, cursor.moveH, cursor.moveV, select.mark
+;tratamiento de lineas:
+extern lines.startsline, lines.endline, lines.endword, lines.current
 ;main externs
 extern vim.update, video.Update
-
-section .data
-mode db 0
 
 section .text
 ;call:
@@ -18,9 +17,8 @@ global start.visual
 start.visual:
 startSubR
     mov eax, [ebp+4]
-    mov [mode], eax
     push eax
-    call select.start
+    call select.mark
 endSubR 4
 
 global mode.visual
@@ -68,12 +66,22 @@ startSubR
 
     .endline:
     ;Selecciona hasta el final de la linea
+        push dword[lines.current]
+        call lines.endline
+        mov [cursor], eax
     jmp .end
+    
     .startline:
     ;Selecciona hasta el inicio de linea
+        push dword[lines.current]
+        call lines.startsline
+        mov [cursor], eax
     jmp .end
+    
     .endword:
     ;Selecciona hasta el final de palabra
+        call lines.endword
+        mov [cursor], eax
     jmp .end
 
     .exit:

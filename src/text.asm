@@ -31,6 +31,9 @@ section .data
 
 	select.start dd  0
 	select.mode  dd  0
+	%define select.mode.normal 0
+	%define select.mode.line 1
+	%define select.mode.block 2
 section .text
 
 
@@ -147,7 +150,9 @@ global text.movebackward
 text.movebackward:
 	startSubR
 	mov eax, [ebp+4]	
-	dec eax				
+	dec eax	
+	mov dl, [text+eax]
+	push edx
 	lea edi, [text+eax]						;mi destino es la posicion actual						
 	lea esi, [text+eax+1]					;mi origen es la posicion actual mas 1
 
@@ -168,14 +173,11 @@ text.movebackward:
 	sub ecx, eax							;la ultima linea - pos
 
 	mov eax, [lines.current]
-	mov edx, [ebp+8]
-	cmp edx, 0x0d							;el caracter que borre es fin de linea?
+	pop edx
+	cmp edx, ASCII.enter					;el caracter que borre es fin de linea?
 	jne .normal								;sino lo es, actualizo los valores normal
-	jmp .eraseline							;de serlo, elimino la linea
 
-	.eraseline:
-	cmp ecx, 0								;si estoy en la ultima linea
-	je .end									;entonces no puedo borrar la linea
+	.eraseline:								;de serlo, elimino la linea
 	dec dword[lines.lastline]				;decremento el valor de la ultima linea
 	mov edx, [lines.lengths+4*eax]			;guardo la cantidad de caracteres de la linea q elimine
 	add [lines.lengths+4*(eax-1)], edx		;y a la linea anterior se le adiciona la cant de caracteres de la otra linea
@@ -251,6 +253,32 @@ lines.endline:
 	add eax,edx
 	endSubR 4
 
+;Determina la posicion donde se acaba la palabra sobre la cual esta el cursor
+	;call:
+	;call call lines.endword
+	;return: eax -> posicion donde esta el final de palabra
+global lines.endword
+lines.endword:
+	startSubR
+		mov eax, [cursor]				
+		lea esi, [text+eax]				;empiezo a analizar el texto desde lo que esta en la poscion del cursor
+		mov ecx, eax					;llevo un contador de las veces que he adelantado, desde la pos de cursor
+		xor eax, eax
+		cld
+		.lp:
+			lodsb						;al = lo q esta en el text
+			cmp al, ' '					;si es un caracter vacio, entonces ya es el final de la palabra
+			je .end
+			cmp al, ASCII.enter			;si el caracter es enter, entonces tambien es el final
+			je .end
+			cmp al, ASCII.tab			;si es tab termino tambien
+			je .end
+			inc ecx						;incremento si no he terminado la palabra
+			jmp .lp
+		.end:
+		mov eax, ecx					;guardo para retornar la posicion del final
+	endSubR 0
+
 
 ;Determina la linea que ocupa una posicion determinada
 	;call:
@@ -282,60 +310,47 @@ lines.line:
 global lines.newline
 lines.newline:
 	startSubR
-	;rectifico si la linea a crear es, a lo sumo, inmediata a la ultima creada
-		mov eax,[lines.lastline]
-		push eax
-		call lines.endline
-;		dec eax
-		cmp eax,[cursor]
-		jb .end       				;si: line > lines.lastline+1 => no tiene sentido alguno crearla
-	;	je .onEnd					;si: line == lines.lastline+1, me salto el corrimiento de lineas o
-		 
-		;crear una linea dentro de otra
-		
 		;1-calculo diferenciales: hago espacio para annadir valores nuevos
 		
 		;muevo lengths
-			mov eax,[lines.lastline]				;empiezo desde la ultima linea
-			lea edi,[lines.lengths + 4*(eax+1)]		;mi destino es la linea donde estoy +1
-			lea esi,[lines.lengths + 4*eax]			;copio desde la linea actual
-			std 
-			mov ecx,eax								;calculo cuanto me voy a mover:ultima linea - actual
-			mov eax,[lines.current]
-			sub ecx,eax
-			inc ecx
-			rep movsd 								;empiezo a desplazar las lineas
+		mov eax,[lines.lastline]			;empiezo desde la ultima linea
+		lea edi,[lines.lengths + 4*(eax+1)]	;mi destino es la linea donde estoy +1
+		lea esi,[lines.lengths + 4*eax]		;copio desde la linea actual
+		std 
+		mov ecx,eax							;calculo cuanto me voy a mover:ultima linea - actual
+		mov eax,[lines.current]
+		sub ecx,eax
+		inc ecx
+		rep movsd 							;empiezo a desplazar las lineas
 		;muevo starts
-			mov eax,[lines.lastline]				;hago lo mismo con los start
-			lea edi, [lines.starts + 4*(eax+1)]
-			lea esi, [lines.starts + 4*eax]
-			std
-			mov ecx,eax 
-			mov eax,[lines.current] 
-			sub ecx,eax 
-			inc ecx
-			rep movsd
+		mov eax,[lines.lastline]			;hago lo mismo con los start
+		lea edi, [lines.starts + 4*(eax+1)]
+		lea esi, [lines.starts + 4*eax]
+		std
+		mov ecx,eax 
+		mov eax,[lines.current] 
+		sub ecx,eax 
+		inc ecx
+		rep movsd
 
-			; mov eax, [lines.starts+4]
-			; mov ebx, [lines.lengths+4]
 		;ahora ya estan creados los espacios para escribir los nuevos valores, calculo  cursor-inicio y fin-cursor
 		push dword ASCII.enter				;inserto el enter en el texto
 		call text.insert
 
 		push dword [lines.current]
-		call lines.endline			;eax = fin de linea
-		mov edx,eax					;salvo en edx
-		push edx					;salvo fin de linea
+		call lines.endline					;eax = fin de linea
+		mov edx,eax							;salvo en edx
+		push edx							;salvo fin de linea
 		push dword [lines.current]
-		call lines.startsline		;eax = inicio de linea
+		call lines.startsline				;eax = inicio de linea
 		
 		mov edx,[cursor]
-		sub edx,eax					;calculo cursor-inicio 
-		pop eax 					;eax = fin de linea
-		push edx 					;salvo cursor-inicio			
+		sub edx,eax							;calculo cursor-inicio 
+		pop eax 							;eax = fin de linea
+		push edx 							;salvo cursor-inicio			
 		mov edx ,[cursor]
-		sub eax,edx					;calculo fin-cursor 
-		mov edx, eax 				;salvo fin-cursor
+		sub eax,edx							;calculo fin-cursor 
+		mov edx, eax 						;salvo fin-cursor
 		
 		mov eax,[lines.current]
 		mov [lines.lengths + 4*(eax+1)],edx	;tamanno de la nueva linea = fin-cursor
@@ -353,9 +368,6 @@ lines.newline:
 		;muevo el text para crear espacio al fin de linea
 		inc dword[lines.lastline]
 		inc dword[lines.current]
-		jmp .end
-
-		.end:
 	endSubR 0
 
 
@@ -464,6 +476,7 @@ cursor.moveV:
 		je .continue				;de no estarlo, continuo
 		xor edx, edx				
 		mov dl, [moveV]				;sino cambio el valor de la cantidad que se quiere mover
+	;	break
 		.continue:
 		push edx					;guardo cuanto se quiere mover en pila
 
@@ -486,7 +499,8 @@ cursor.moveV:
 		pop ebx						;se recupera cuanto se quiere mover
 		cmp eax, ebx 				;es la cantidad de caracteres de la linea mayor que lo que se quiere mover?
 		ja .end 					;si lo es, entonces no se hace mas nada
-		add eax, edx				;si no adiciono el principio con la cantidad de caracteres, para obtener el final de linea
+		add eax, edx				;si no adiciono el principio con la cantidad de caracteres, 
+		dec eax						;para obtener el final de linea, menos uno por ser la pos
 		mov [cursor], eax			;pongo el cursor en el final de la linea
 		mov al, [moveV]				;copio el valor del ultimo movimiento vertical
 		cmp al, 0					;el valor esta actualizado?
@@ -498,13 +512,13 @@ cursor.moveV:
 ;Empieza una seleccion
 ;call:
 ;push dword mode (0 normal, 1 linea, 2 bloque)
-global select.start
-select.start:
+global select.mark
+select.mark:
 	startSubR
 		mov eax, [cursor]
-		mov [start], eax			;la posicion del cursor es el principio de mi seleccion
+		mov [select.start], eax			;la posicion del cursor es el principio de mi seleccion
 		mov eax, [ebp+4]			
-		mov [mode], eax				;copio el modo que se pasa como parametro
+		mov [select.mode], eax				;copio el modo que se pasa como parametro
 	endSubR 4
 
 ;Selecciona en modo linea
@@ -512,7 +526,7 @@ select.start:
 ;call select.line
 copy:
 startSubR
-	push dword[start]				;pongo donde empieza mi seleccion como parametro
+	push dword[select.start]				;pongo donde empieza mi seleccion como parametro
 	call lines.line					;pregunto por la linea de mi seleccion
 	mov edx, [lines.starts+4*eax]	;busco el principio de esa linea
 
@@ -528,3 +542,4 @@ startSubR
 	rep movsb
 
 endSubR 0
+

@@ -155,7 +155,7 @@ and %1,0x0000ffff
 	push dword %2				;pasa el codigo scan de la tecla que no es de control como parametro
 	call isKey2					;llama para comprobar si se presionaron las teclas
 	cmp eax, 1					;si se presiono
-	je %2						;entonces salta para la etiqueta especificada
+	je %3						;entonces salta para la etiqueta especificada
 %endmacro
 %endif
 
