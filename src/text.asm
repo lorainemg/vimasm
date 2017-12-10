@@ -29,7 +29,9 @@ section .data
 	lines.lastline 	dd 		0		;la ultima linea que se ha escrito
 	moveV		dd		0		;el ultimo movimiento vertical
 
+	global select.start
 	select.start dd  0
+	global select.mode
 	select.mode  dd  0
 	%define select.mode.normal 0
 	%define select.mode.line 1
@@ -289,13 +291,9 @@ lines.newline:
 		mov eax,[lines.lastline]
 		push eax
 		call lines.endline
-;		dec eax
+
 		cmp eax,[cursor]
 		jb .end       				;si: line > lines.lastline+1 => no tiene sentido alguno crearla
-	;	je .onEnd					;si: line == lines.lastline+1, me salto el corrimiento de lineas o
-		 
-		;crear una linea dentro de otra
-		
 		;1-calculo diferenciales: hago espacio para annadir valores nuevos
 		
 		;muevo lengths
@@ -319,8 +317,6 @@ lines.newline:
 			inc ecx
 			rep movsd
 
-			; mov eax, [lines.starts+4]
-			; mov ebx, [lines.lengths+4]
 		;ahora ya estan creados los espacios para escribir los nuevos valores, calculo  cursor-inicio y fin-cursor
 		push dword ASCII.enter				;inserto el enter en el texto
 		call text.insert
@@ -512,28 +508,28 @@ select.mark:
 
 
 select.copy:
-startSubR
-mov eax,[select.start]
-mov edx,[cursor]
-cmp eax,edx
-jbe .mode
-xchg eax,edx 
-
-push eax
-push edx
+	startSubR
+	mov eax,[select.start]
+	mov edx,[cursor]
+	cmp eax,edx
+	jbe .mode
+	xchg eax,edx 
+	
+	push eax
+	push edx
 .mode:
 
-cmp dword [select.mode],select.mode.normal
-jne .tryline
-call select.copy.normal
+	cmp dword [select.mode],select.mode.normal
+	jne .tryline
+	call select.copy.normal
 
 .tryline:
-cmp dword [select.mode],select.mode.line
-jne .tryblock
-call select.copy.line
+	cmp dword [select.mode],select.mode.line
+	jne .tryblock
+	call select.copy.line
 
 .tryblock:
-call select.copy.block
+	call select.copy.block
 
 
 
