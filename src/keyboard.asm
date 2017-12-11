@@ -12,12 +12,12 @@
 			mov dl,[keyflags]  	;copio la direccion de keyflag a dl para realizar operaciones logicas sobre el
 		%%tryDown:
 			mov	bx,%2         	;muevo el scan code down a ebx para operaciones
-			cmp	%1,bl  		;comparo si el actual scan code es igual al scan code de la tecla
+			cmp	%1,bl  			;comparo si el actual scan code es igual al scan code de la tecla
 			jne	%%tryUp
 			or 	dl,%3         	;activo flags 
 			jmp %%end 		
 		%%tryUp:
-			cmp %1,bh		;comparo si el actual scan code es igual al scan code de la tecla
+			cmp %1,bh			;comparo si el actual scan code es igual al scan code de la tecla
 			jne %%end
 			and dl,~%3   		;desactivo flag
 		%%end:

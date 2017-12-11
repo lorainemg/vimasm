@@ -72,9 +72,9 @@ video.Update:
         call video.UpdateSelection
    
     .trysearch:
-        test dl, hidesearch
-        jnz .end
-        call video.UpdateSearch
+ ;      test al, hidesearch
+ ;       jnz .end
+        ;call video.UpdateSearch
 
     
 
@@ -119,6 +119,10 @@ video.UpdateBuffer:
         jmp .endrow
 
     .paintEnter:
+        stosw
+        dec ecx
+        mov ah,[format.text]
+        xor al,al
         rep stosw                           ;pintara el resto de la linea del formato 
         jmp .endrow
     .paintTab:
@@ -153,12 +157,15 @@ video.UpdateText:
     
 endSubR 0
 
+
+
  
 video.UpdateSelection:
 	startSubR
+    
 	mov eax,[select.start]
 	mov edx,[cursor]
-;	break
+	
     cmp eax,edx
 	jbe .mode
 	push eax
@@ -166,45 +173,45 @@ video.UpdateSelection:
     pop eax
     pop edx 
 
+	
     .mode:
-	push edx
     push eax
+	push edx
 
 	cmp dword [select.mode],0
 	jne .tryline
 	call video.UpdateSelection.normal
-    jmp .end
     
+    jmp .end
     .tryline:
+	
     cmp dword [select.mode],1
 	jne .tryblock
 	call video.UpdateSelection.line
     jmp .end
     .tryblock:
-    ; pop eax
-    ; pop eax
+    pop eax
+    pop eax
     ;	call select.copy.block
 .end:
 endSubR 0
-
 
 video.UpdateSelection.normal:
 startSubR
 	mov eax,[ebp+4]
 	mov edx,[ebp+8]
 	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
-	mov ecx, edx					;la cantidad de movimientos q hago:					
-	sub ecx, eax					;
-    inc ecx
-	lea edi,[buffer.textcache+2*eax]
-    lea esi,[buffer.textcache+2*eax]
+	mov ecx, eax					;la cantidad de movimientos q hago:					
+	sub ecx, edx
+    inc ecx					;
+	mov edi, buffer.textcache
+    mov esi,buffer.textcache
     cld
 	.lp:
     lodsw
     mov ah,[format.select]
 	stosw
     loop .lp
-  ;  break
 endSubR 8
 
 ;Selecciona en modo linea
@@ -223,11 +230,11 @@ startSubR
 	call lines.line                 ;busco la linea de mi final como parametro
 	push eax                        ;pongo la lina como parametro
 	call lines.endline				;busco el final de la linea
-    dec eax 
+    	dec eax 
 	push eax                        ;intercambio los parametros (porque Tony quiere que eax sea el principio)
-    push edx
-    pop eax
-    pop edx
+    	push edx
+    	pop eax
+    	pop edx
 	;Se copiaria, desde el principio de la linea de inicio hasta el final de la linea final
 	mov ecx, edx					;la cantidad de movimientos q hago:					
 	sub ecx, eax					;
@@ -236,10 +243,10 @@ startSubR
 	lea edi, [buffer.textcache+2*eax]
     cld
 	.lp:
-        lodsw
-        mov ah,[format.select]
-	    stosw
-        loop .lp
+    lodsb
+    mov ah,[format.select]
+	stosw
+    loop .lp
 endSubR 8
 
 
