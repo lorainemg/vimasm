@@ -273,12 +273,13 @@ lines.endline:
 
 ;Determina la posicion donde se acaba la palabra sobre la cual esta el cursor
 	;call:
-	;call call lines.endword
+	;push dword pos: ebp + 4
+	;call lines.endword
 	;return: eax -> posicion donde esta el final de palabra
 global lines.endword
 lines.endword:
 	startSubR
-		mov eax, [cursor]				
+		mov eax, [ebp+4]				
 		lea esi, [text+eax]				;empiezo a analizar el texto desde lo que esta en la poscion del cursor
 		mov ecx, eax					;llevo un contador de las veces que he adelantado, desde la pos de cursor
 		xor eax, eax
@@ -295,7 +296,7 @@ lines.endword:
 			jmp .lp
 		.end:
 		mov eax, ecx					;guardo para retornar la posicion del final
-	endSubR 0
+	endSubR 4
 
 
 ;Determina la linea que ocupa una posicion determinada
@@ -593,6 +594,7 @@ select.copy:
 ;push dword end: ebp + 8
 ;push dword start: ebp + 4
 ;call select.copy.normals
+global select.copy.normal
 select.copy.normal:
 	startSubR
 		mov eax,[ebp+4]					;eax = principio de la copia
@@ -601,7 +603,6 @@ select.copy.normal:
 		mov ecx, edx					;la cantidad de movimientos q hago:					
 		sub ecx, eax					;el final - inicio de la copia
 		inc ecx
-	;	break
 		lea esi, [text+eax]				;copio desde el texto a partir del inicio
 		mov edi, select.cache			;copio hacia el cache de la copia
 		rep movsb						;voy moviendo de un lugar a otro las veces calculadas
@@ -609,30 +610,43 @@ select.copy.normal:
 		stosb							;al final de la copia pongo 
 	endSubR 8
 
-;Selecciona en modo linea
+;Guarda la copia en modo linea
 	;call:
 	;push dword end ebp+8
 	;push dword start ebp+4
 	;call select.copy.line
 select.copy.line:
 	startSubR
-		push dword[ebp+4]				;pongo donde empieza mi seleccion como parametro
-		call lines.line					;pregunto por la linea de mi seleccion
-		mov edx, [lines.starts+4*eax]	;busco el principio de esa linea
-
-
 		push dword[ebp+8]				;pongo mi la posicion final como parametro
 		call lines.line					;pregunto por la linea de dicha seleccion
-		push eax 						;pongo la linea como parametro
+		mov edx, eax
+		
+		push dword[ebp+4]				;pongo donde empieza mi seleccion como parametro
+		call lines.line					;pregunto por la linea de mi seleccion
+	
+		push edx
+		push eax
+		call copy.line
+	endSubR 8
+
+;call:
+;push dword endline: ebp + 8
+;push dword startLine: ebp + 4
+;call copy.line
+global copy.line
+copy.line:
+	startSubR
+		push dword[ebp+8] 				;pongo la linea como parametro
 		call lines.endline				;busco el final de la linea final
-		push eax                        ;intercambio los parametros (porque Tony quiere que eax sea el principio)
-	    push edx
-	    pop eax
-		pop edx
+		mov edx, eax					;edx = pos final de la linea final
+		
+		mov ebx, dword[ebp+4]
+		mov eax, [lines.starts+4*ebx]	;eax principio de la linea actual
+
 		;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
 		mov ecx, edx					;la cantidad de movimientos q hago:					
 		sub ecx, eax					;la pos final - pos inicial
-		inc ecx
+	;	inc ecx
 		
 		lea esi, [text+eax]				;empiezo a copiar desde el texto en la posicion del principio
 		mov edi, select.cache			;hacia el select cache
@@ -640,6 +654,7 @@ select.copy.line:
 		xor al,al						
 		stosb							;al final de mi copia pongo 0
 	endSubR 8
+
 
 select.copy.block:
 startSubR

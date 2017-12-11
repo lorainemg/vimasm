@@ -4,7 +4,9 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, isNum, getChar
 ;text externs
-extern cursor.moveH, cursor.moveV, cursor.moveline, lines.last
+extern cursor.moveH, cursor.moveV, cursor.moveline, cursor
+extern lines.last, lines.endword, lines.current
+extern select.copy.normal, copy.line
 ;modes externs
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste
 ;main externs
@@ -45,12 +47,18 @@ mode.normal:
 	;Moverse por el fichero:
 		checkKey2 key.shiftL, key.g, .goLine	;si se presiono shift+g
 		checkKey1 key.g, .goStart				;si se presiono 2 vecer g
-		checknum .num
-		;TODO: Funcion especial para ver si se presiono un # y shift+g, en cuyo caso va a la linea especificada
-
 
 	;TODO: Faltan los operadores + repeticiones + movimiento
-	
+	;Operadores:
+		checkKey1 key.y, .copy
+		checkKey1 key.d, .erase
+		checkKey1 key.c, .replace
+	;Operadores de movimiento
+    	checkKey1 key.4, .endline    
+    	checkKey1 key.6, .startline
+    	checkKey1 key.w, .endword
+
+		checknum .num
 
 			jmp .end
 	;##########################################################################################################################################################
@@ -153,13 +161,72 @@ mode.normal:
 		;Logica para el comando punto
 			jmp .end
 
+		.copy:
+		;Logica para copiar con repeticion + operadores de movimiento
+			cmp byte[lastkey], 'y'
+			je .copyline
+			mov byte[lastkey], 'y'
+			jmp .end
+			.copyline:
+				inRange 48, 57, byte[lastkey+1]		;hay un numero en lastkey?
+				cmp eax, 0						;el valor de la ultima tecla es un numero? 
+				je .start						;si no lo es, entonces simplemente voy al final del textos
+				xor eax, eax
+				mov al, [lastkey+1]
+				sub eax, 48
+				.start:
+				push eax
+				push dword 1
+				call copy
+			jmp .end
+		.erase:
+		;Logica para borrar con repeticion + operadores de movimiento
+			mov byte[lastkey], 'e'
+			jmp .end
+		.replace:
+		;Logica para reemplazar con repeticion + operadores de movimiento
+			mov byte[lastkey], 'r'
+		 	jmp .end
+
+		.endline:
+		;Logica para realizar la operacion hasta el final de una linea
+			jmp .end  
+		.startline:
+		;Logica para realizar la operacion hacia el inicio de una linea
+			jmp .end
+		.endword:
+		;Logica para realizar la operacion hacia el final de una linea
+			xor ebx, ebx
+			mov bl, [lastkey]
+			cmp byte[lastkey], 'y'
+			je .yank
+			.yank:
+				inRange 48, 57, byte[lastkey+1]		;hay un numero en lastkey?
+				cmp eax, 0						;el valor de la ultima tecla es un numero? 
+				je .starty						;si no lo es, entonces simplemente voy al final del textos
+				xor eax, eax
+				mov al, [lastkey+1]
+				sub eax, 48
+				.starty:
+				push eax
+				push dword 0
+				call copy
+			jmp .end
+
 		.num:
 		;Control intermedio para decidir que se hace cuando se presiona un numero
-			cmp byte[lastkey], 0
-			jne .tryop
-			mov byte[lastkey], al
+			cmp byte[lastkey], 'y'			;si no se a presionado ninguna tecla
+			je .tryop						;se guarda el valor del numero en la tecla actual
+			cmp byte[lastkey], 'c'
+			je .tryop
+			cmp byte[lastkey], 'd'
+			je .tryop
+			mov byte[lastkey], al			;para los movimientos por el fichero
 			jmp .end
-			.tryop:
+			.tryop:							;si no, es una operacion lo que esta en lastkey
+			mov byte[lastkey+1], al			;se deja la operacion en el primer byte, y en el segundo se pone el numero
+			xor ebx, ebx
+			mov bl, byte[lastkey+1]
 			jmp .end
 
 	.end:
@@ -169,4 +236,39 @@ mode.normal:
 	.end2:
 	call vim.update
 	jmp mode.normal
-	ret
+ret
+
+;Copia 
+;call:
+;push dword times: ebp + 8
+;push dword mode: ebp + 4	(0 palabra, 1 linea)
+copy:
+	startSubR
+		mov ecx, [ebp+8]
+		mov eax, [ebp+4]
+		cmp eax, 1
+		je .modeline
+		mov eax, [cursor]
+		cmp ecx, 0
+		jne .lp1
+		inc ecx
+	.lp1:							;para copiar varias palabras calculo el total de cuato me voy a mover:
+		push eax					;pongo la posicion en la que estoy ahora como parametro
+		call lines.endword			;y pregunto por la posicion final de esa palabra, eax se va incrementando
+		inc eax
+		loop .lp1					;VER: a lo mejor hay que incrementar el valor de eax
+		dec eax
+		push eax					;pongo la pos final de la palabra como parametro
+		push dword[cursor]			;pongo la pos inicial como parametro
+		call select.copy.normal		;copio desde mi posicion hasta el final de la palabra
+		jmp .end
+	.modeline:						;Para copiar en modo linea:
+		mov eax, [lines.current]	;eax = linea actual
+		mov edx, eax				
+		add edx, ecx				;edx = linea actual + cantidad de veces que se repite la accion
+		dec edx
+		push edx					;el final de la copia sera edx
+		push eax					;el inicio eax
+		call copy.line				;y llamo para copiar
+	.end:
+	endSubR 8

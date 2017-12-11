@@ -4,12 +4,12 @@
 ; %1 = min , %2 = max , %3 = value
 %macro inRange 3
 
-mov eax,%1
-cmp eax,%3
+mov al,%1
+cmp al,%3
 ja %%over      ; if min > value
 
-mov eax,%2	   	
-cmp eax,%3
+mov al,%2	   	
+cmp al,%3
 jb %%over	   ; if max < value
 
 xor eax,eax		;limpio registro

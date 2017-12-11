@@ -299,6 +299,7 @@ isNum:
 		inRange 48, 57, eax
 		cmp eax, 0
 		je .end
+		xor eax, eax
 		call getChar
 		.end
 	endSubR 0

@@ -104,12 +104,10 @@ mode.insert:
 			call eraseline
 			jmp .end
 
-
 		.exitmode:
 		;Logica para salir del modo
-		ret
+			ret
 			jmp .end
-
 	.end:
 	;Update
 	call video.Update
@@ -148,7 +146,8 @@ eraseword:
 		call erasetimes
 	endSubR 0
 
-;Borra desde el cursor hasta el principio de su  linea
+;Borra desde el cursor hasta el principio de su linea
+global eraseline
 eraseline:
 	startSubR
 		push dword[lines.current]		
