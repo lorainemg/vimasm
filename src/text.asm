@@ -320,12 +320,12 @@ global erasetimes
 erasetimes:
 	startSubR
 		mov ecx, [ebp+4]				;pongo como contador lo especificado
-	;	break
 		.lp:
 			push dword[cursor]			
 			call text.movebackward		;elimino desde la posicion del cursor
 			loop .lp					;repito el ciclo tantas veces como las especificadas
 			.end:
+			;break
 	endSubR 4
 
 ;Determina la linea que ocupa una posicion determinada

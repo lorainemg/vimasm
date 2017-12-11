@@ -213,9 +213,16 @@ mode.normal:
 			mov bl, [lastkey]
 			cmp byte[lastkey], 'y'
 			je .yank
+			cmp byte[lastkey], 'd'
+			je .delete
 			.yank:
 				operator 0, copyOperator
-			jmp .end
+				mov byte[lastkey], 0
+				jmp .end
+			.delete:
+				operator 0, eraseOperator
+				mov byte[lastkey], 0
+				jmp .end
 
 		.num:
 		;Control intermedio para decidir que se hace cuando se presiona un numero
@@ -248,32 +255,51 @@ ret
 ;push dword mode: ebp + 4	(0 palabra, 1 linea)
 copyOperator:
 	startSubR
-		mov ecx, [ebp+8]
-		mov eax, [ebp+4]
-		cmp eax, 1
-		je .modeline
-		mov eax, [cursor]
-		inc ecx
-	.lp1:							;para copiar varias palabras calculo el total de cuato me voy a mover:
-		push eax					;pongo la posicion en la que estoy ahora como parametro
-		call lines.endword			;y pregunto por la posicion final de esa palabra, eax se va incrementando
-		inc eax
-		loop .lp1					;VER: a lo mejor hay que incrementar el valor de eax
-		dec eax
-		push eax					;pongo la pos final de la palabra como parametro
-		push dword[cursor]			;pongo la pos inicial como parametro
-		call select.copy.normal		;copio desde mi posicion hasta el final de la palabra
+		mov eax, [ebp+4]			;accedo al modo en que voy a copiar
+		cmp eax, 1					;si es modo linea
+		je .modeline				;voy a copiar en modo linea
+	.modeword:
+		push dword[ebp+8]			;pongo la cantidad de veces que voy a copiar como parametro
+		call copyOperator.Word		;y copio las veces contadas
 		jmp .end
 	.modeline:						;Para copiar en modo linea:
 		mov eax, [lines.current]	;eax = linea actual
 		mov edx, eax				
-		add edx, ecx				;edx = linea actual + cantidad de veces que se repite la accion
-
+		add edx, [ebp+8]			;edx = linea actual + cantidad de veces que se repite la accion
 		push edx					;el final de la copia sera edx
 		push eax					;el inicio eax
 		call copy.line				;y llamo para copiar
 	.end:
 	endSubR 8
+
+;call:
+;push dword times: ebp + 4
+copyOperator.Word:
+	startSubR
+		mov edx, [ebp+4]			;edx + 1 = catidad de palabras que voy a copiar
+		inc edx					
+		push edx					
+		call posWords				;busco la hasta donde esta el final de las palabras
+		dec eax
+		push eax					;pongo la pos final de la palabra como parametro
+		push dword[cursor]			;pongo la pos inicial como parametro
+		call select.copy.normal		;copio desde mi posicion hasta el final de la palabra
+	endSubR 4
+
+;Busca la posicion final de un conjunto de palabras a partir de la posicion del cursor
+;call:
+;push dword times: ebp + 4
+;return: eax -> pos del fin de palabra
+posWords:
+	startSubR
+		mov ecx, [ebp+4]
+		mov eax, [cursor]
+	.lp1:							;para copiar varias palabras calculo el total de cuanto me voy a mover:
+		push eax					;pongo la posicion en la que estoy ahora como parametro
+		call lines.endword			;y pregunto por la posicion final de esa palabra, eax se va incrementando
+		inc eax
+		loop .lp1	
+	endSubR 4
 
 ;call:
 ;push dword times: ebp + 8
@@ -284,14 +310,25 @@ eraseOperator:
 		mov eax, [ebp + 4]
 		cmp eax, 1
 		je .modeline
-		
-		.modeline:
+	.modeword:
+		inc ecx
+		push ecx
+		call posWords
+		mov edx, [cursor]
+		dec eax
+		mov [cursor], eax
+		sub eax, edx			
+		push eax					;pongo la pos final de la palabra como parametro
+		call erasetimes
+		jmp .end
+	.modeline:
 		push dword[cursor]
 		push dword[lines.current]
 		push ecx
 		call eraselines
 		pop dword[lines.current]
 		pop dword[cursor]
+		.end:
 	endSubR 8
 
 ;call
@@ -310,6 +347,7 @@ eraselines:
 		sub ecx, eax				;ecx = pos final - pos inicial
 		dec ecx
 		push ecx
+	;	break
 		call erasetimes				;llamo para borrar las veces calcualdas
 	endSubR 4
 

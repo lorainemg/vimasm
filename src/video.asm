@@ -165,6 +165,7 @@ video.UpdateSelection:
     
 	mov eax,[select.start]
 	mov edx,[cursor]
+  ;  break
 	
     cmp eax,edx
 	jbe .mode
@@ -190,8 +191,8 @@ video.UpdateSelection:
 	call video.UpdateSelection.line
     jmp .end
     .tryblock:
-    pop eax
-    pop eax
+    ; pop eax
+    ; pop eax
     ;	call select.copy.block
 .end:
 endSubR 0
@@ -204,8 +205,8 @@ startSubR
 	mov ecx, eax					;la cantidad de movimientos q hago:					
 	sub ecx, edx
     inc ecx					;
-	mov edi, buffer.textcache
-    mov esi,buffer.textcache
+	lea edi, [buffer.textcache+2*edx]
+    lea esi, [buffer.textcache+2*edx]
     cld
 	.lp:
     lodsw
@@ -230,20 +231,21 @@ startSubR
 	call lines.line                 ;busco la linea de mi final como parametro
 	push eax                        ;pongo la lina como parametro
 	call lines.endline				;busco el final de la linea
-    	dec eax 
+    dec eax 
 	push eax                        ;intercambio los parametros (porque Tony quiere que eax sea el principio)
-    	push edx
-    	pop eax
-    	pop edx
+    push edx
+    pop eax
+    pop edx
 	;Se copiaria, desde el principio de la linea de inicio hasta el final de la linea final
 	mov ecx, edx					;la cantidad de movimientos q hago:					
 	sub ecx, eax					;
 	inc ecx
-	lea esi, [buffer.textcache+2*eax]
+	
+    lea esi, [buffer.textcache+2*eax]
 	lea edi, [buffer.textcache+2*eax]
     cld
 	.lp:
-    lodsb
+    lodsw
     mov ah,[format.select]
 	stosw
     loop .lp
