@@ -76,8 +76,6 @@ video.Update:
  ;       jnz .end
         ;call video.UpdateSearch
 
-    
-
    .end:
    call video.UpdateBuffer
 endSubR 0
@@ -128,7 +126,6 @@ video.UpdateBuffer:
     .paintTab:
         jmp .columns
     .end:
-    
 endSubR 0 
 
 video.UpdateText:
@@ -165,7 +162,6 @@ video.UpdateSelection:
     
 	mov eax,[select.start]
 	mov edx,[cursor]
-  ;  break
 	
     cmp eax,edx
 	jbe .mode
