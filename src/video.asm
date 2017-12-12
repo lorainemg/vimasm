@@ -17,6 +17,8 @@ section .bss
     buffer.textcache    resw 0xf00
 
 section .data
+
+      
     ;Formats
     format.cursor       db BG.CYAN|0xf
     format.text         db BG.BRIGHT|0xf
@@ -67,11 +69,11 @@ video.Update:
     .tryselection:
       ;  test al, hideselection
       ;  jnz .trysearch
-        call video.UpdateSelection
+         call video.UpdateSelection
    
     .trysearch:
-;      test al, hidesearch
-;       jnz .end
+ ;      test al, hidesearch
+ ;       jnz .end
         ;call video.UpdateSearch
 
     
@@ -109,7 +111,7 @@ video.UpdateBuffer:
         jmp .end
 
     .paintEmpty:
-        mov al,'~' 
+        mov al,'~'
         stosw                               ;solo pinto una
         dec ecx
         xor al,al
@@ -117,6 +119,10 @@ video.UpdateBuffer:
         jmp .endrow
 
     .paintEnter:
+        stosw
+        dec ecx
+        mov ah,[format.text]
+        xor al,al
         rep stosw                           ;pintara el resto de la linea del formato 
         jmp .endrow
     .paintTab:
@@ -151,8 +157,6 @@ video.UpdateText:
     
 endSubR 0
 
-
-
  
 video.UpdateSelection:
 	startSubR
@@ -171,6 +175,7 @@ video.UpdateSelection:
     .mode:
     push eax
 	push edx
+    ;breake edx,eax
 
 	cmp dword [select.mode],0
 	jne .tryline
@@ -196,7 +201,8 @@ startSubR
 	mov edx,[ebp+8]
 	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
 	mov ecx, eax					;la cantidad de movimientos q hago:					
-	sub ecx, edx					;
+	sub ecx, edx
+    inc ecx					;
 	mov edi, buffer.textcache
     mov esi,buffer.textcache
     cld
@@ -252,6 +258,7 @@ video.UpdateCursor:
     mov al,[format.cursor]
     mov [buffer.textcache + 2*edx +1],al
 endSubR 0
+
 
 
 
