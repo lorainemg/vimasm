@@ -193,6 +193,14 @@ mode.normal:
 			jmp .end  
 		.startline:
 		;Logica para realizar la operacion hacia el inicio de una linea
+			xor ebx, ebx
+			mov bl, [lastkey]
+			cmp byte[lastkey], 'y'
+			je .y
+			jmp .end
+			.y:
+			push dword 2
+			call copyOperator
 			jmp .end
 		.endword:
 		;Logica para realizar la operacion hacia el final de una palabra
@@ -259,26 +267,30 @@ goNumLine:
 ;Copia 
 ;call:
 ;push dword times: ebp + 8
-;push dword mode: ebp + 4	(0 palabra, 1 linea)
+;push dword mode: ebp + 4	(0 palabra, 1 linea, 2 principio de linea)
 copyOperator:
 	startSubR
 		mov eax, [ebp+4]			;accedo al modo en que voy a copiar
 		cmp eax, 1					;si es modo linea
 		je .modeline				;voy a copiar en modo linea
+		cmp eax, 2
+		je .modestart
 	.modeword:
 		push dword[ebp+8]			;pongo la cantidad de veces que voy a copiar como parametro
-		call copyOperator.Word		;y copio las veces contadas
+		call copyOperator.word		;y copio las veces contadas
 		jmp .end
 	.modeline:						;Para copiar en modo linea:
 		push dword[ebp+8]			;y llamo para copiar
-		call copyOperator.Line
+		call copyOperator.line
 		jmp .end
+	.modestart:
+		call copyOperator.start
 	.end:
 	endSubR 8
 
 ;call:
 ;push dword times: ebp + 4
-copyOperator.Word:
+copyOperator.word:
 	startSubR
 		mov edx, [ebp+4]			;edx + 1 = catidad de palabras que voy a copiar
 		inc edx					
@@ -292,7 +304,7 @@ copyOperator.Word:
 
 ;call:
 ;push dword time: ebp + 4
-copyOperator.Line:
+copyOperator.line:
 	startSubR
 		mov eax, [lines.current]	;eax = linea actual
 		mov edx, eax				
@@ -301,6 +313,16 @@ copyOperator.Line:
 		push eax					;el inicio eax
 		call copy.line			
 	endSubR 4
+
+;call:
+copyOperator.start:
+	startSubR
+		mov eax, [lines.current]
+		mov edx, [lines.starts+4*eax]
+		push dword[cursor]
+		push edx
+		call select.copy.normal
+	endSubR 0
 
 ;Busca la posicion final de un conjunto de palabras a partir de la posicion del cursor
 ;call:
