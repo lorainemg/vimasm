@@ -30,7 +30,7 @@ extern vim.update, video.Update, videoflags
 %endmacro
 
 section .data
-lastkey db 0
+lastkey db 0, 0, 0
 
 section .text
 
@@ -159,20 +159,7 @@ mode.normal:
 			jmp	.end
 		.goLine:
 		;Logica para ir hacia una linea del text del text
-			inRange 48, 57, [lastkey]		;para moverme en una linea en especifica:
-			cmp eax, 0						;el valor de la ultima tecla es un numero? 
-			je .goEnd						;si no lo es, entonces simplemente voy al final del textos
-			xor eax, eax					
-			mov al, [lastkey]				;sino, cojo el valor de la ultima tecla y dependiendo de su valor
-			sub al, 49						;hago operaciones para convertirlo de ASCII a numero
-			push eax
-			call cursor.moveline			;y muevo el cursor en el principio de esa linea
-			mov byte[lastkey], 0			;desactualizo el valor de la ultima tecla
-			jmp .end
-			.goEnd:
-			push dword[lines.last]			;para ir al final del texto:
-			call cursor.moveline			;pongo el cursor en el primer caracter de la primera linea
-			mov byte[lastkey], 0			;desactualizo el valor de la ultima tecla
+			call goNumLine
 			jmp .end
 		.point:
 		;Logica para el comando punto
@@ -249,6 +236,26 @@ mode.normal:
 	jmp mode.normal
 ret
 
+
+goNumLine:	
+	startSubR
+		inRange 48, 57, [lastkey]		;para moverme en una linea en especifica:
+		cmp eax, 0						;el valor de la ultima tecla es un numero? 
+		je .goEnd						;si no lo es, entonces simplemente voy al final del textos
+		xor eax, eax					
+		mov al, [lastkey]				;sino, cojo el valor de la ultima tecla y dependiendo de su valor
+		sub al, 49						;hago operaciones para convertirlo de ASCII a numero
+		push eax
+		call cursor.moveline			;y muevo el cursor en el principio de esa linea
+		mov byte[lastkey], 0			;desactualizo el valor de la ultima tecla
+		jmp .end
+		.goEnd:
+		push dword[lines.last]			;para ir al final del texto:
+		call cursor.moveline			;pongo el cursor en el primer caracter de la primera linea
+		mov byte[lastkey], 0			;desactualizo el valor de la ultima tecla	
+		.end:
+	endSubR 0
+
 ;Copia 
 ;call:
 ;push dword times: ebp + 8
@@ -263,12 +270,9 @@ copyOperator:
 		call copyOperator.Word		;y copio las veces contadas
 		jmp .end
 	.modeline:						;Para copiar en modo linea:
-		mov eax, [lines.current]	;eax = linea actual
-		mov edx, eax				
-		add edx, [ebp+8]			;edx = linea actual + cantidad de veces que se repite la accion
-		push edx					;el final de la copia sera edx
-		push eax					;el inicio eax
-		call copy.line				;y llamo para copiar
+		push dword[ebp+8]			;y llamo para copiar
+		call copyOperator.Line
+		jmp .end
 	.end:
 	endSubR 8
 
@@ -284,6 +288,18 @@ copyOperator.Word:
 		push eax					;pongo la pos final de la palabra como parametro
 		push dword[cursor]			;pongo la pos inicial como parametro
 		call select.copy.normal		;copio desde mi posicion hasta el final de la palabra
+	endSubR 4
+
+;call:
+;push dword time: ebp + 4
+copyOperator.Line:
+	startSubR
+		mov eax, [lines.current]	;eax = linea actual
+		mov edx, eax				
+		add edx, [ebp+4]			;edx = linea actual + cantidad de veces que se repite la accion
+		push edx					;el final de la copia sera edx
+		push eax					;el inicio eax
+		call copy.line			
 	endSubR 4
 
 ;Busca la posicion final de un conjunto de palabras a partir de la posicion del cursor
@@ -306,11 +322,28 @@ posWords:
 ;push dword mode: ebp + 4 (0 palabra, 1 linea)
 eraseOperator:
 	startSubR
-		mov ecx, [ebp + 8]
 		mov eax, [ebp + 4]
 		cmp eax, 1
 		je .modeline
 	.modeword:
+		push dword[ebp + 8]
+		call eraseOperator.word
+		jmp .end
+	.modeline:
+		push dword[cursor]
+		push dword[lines.current]
+		push dword[ebp+8]
+		call eraselines
+		pop dword[lines.current]
+		pop dword[cursor]
+		.end:
+	endSubR 8
+
+;call:
+;push dword times: ebp +4
+eraseOperator.word:
+	startSubR
+		mov ecx, [ebp+4]
 		inc ecx
 		push ecx
 		call posWords
@@ -319,17 +352,8 @@ eraseOperator:
 		mov [cursor], eax
 		sub eax, edx			
 		push eax					;pongo la pos final de la palabra como parametro
-		call erasetimes
-		jmp .end
-	.modeline:
-		push dword[cursor]
-		push dword[lines.current]
-		push ecx
-		call eraselines
-		pop dword[lines.current]
-		pop dword[cursor]
-		.end:
-	endSubR 8
+		call erasetimes	
+	endSubR 4
 
 ;call
 ;push dword times

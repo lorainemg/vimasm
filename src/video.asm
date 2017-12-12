@@ -165,15 +165,15 @@ video.UpdateSelection:
 	
     cmp eax,edx
 	jbe .mode
-	push eax
+	
+    push eax
     push edx
     pop eax
     pop edx 
-
 	
     .mode:
-    push eax
 	push edx
+    push eax
 
 	cmp dword [select.mode],0
 	jne .tryline
@@ -187,22 +187,25 @@ video.UpdateSelection:
 	call video.UpdateSelection.line
     jmp .end
     .tryblock:
-    ; pop eax
-    ; pop eax
-    ;	call select.copy.block
+    pop eax
+    pop eax
+    ;call select.copy.block
 .end:
 endSubR 0
 
+;call:
+;push dword end: ebp + 8
+;push dword start: ebp + 4
 video.UpdateSelection.normal:
 startSubR
 	mov eax,[ebp+4]
 	mov edx,[ebp+8]
 	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
-	mov ecx, eax					;la cantidad de movimientos q hago:					
-	sub ecx, edx
+	mov ecx, edx					;la cantidad de movimientos q hago:					
+	sub ecx, eax
     inc ecx					;
-	lea edi, [buffer.textcache+2*edx]
-    lea esi, [buffer.textcache+2*edx]
+	lea edi, [buffer.textcache+2*eax]
+    lea esi, [buffer.textcache+2*eax]
     cld
 	.lp:
     lodsw
@@ -210,7 +213,6 @@ startSubR
 	stosw
     loop .lp
 endSubR 8
-
 ;Selecciona en modo linea
 	;call:
 	;push dword end ebp+8
@@ -228,23 +230,19 @@ startSubR
 	push eax                        ;pongo la lina como parametro
 	call lines.endline				;busco el final de la linea
     dec eax 
-	push eax                        ;intercambio los parametros (porque Tony quiere que eax sea el principio)
-    push edx
-    pop eax
-    pop edx
+
 	;Se copiaria, desde el principio de la linea de inicio hasta el final de la linea final
-	mov ecx, edx					;la cantidad de movimientos q hago:					
-	sub ecx, eax					;
+	mov ecx, eax					;la cantidad de movimientos q hago:					
+	sub ecx, edx					;
 	inc ecx
-	
-    lea esi, [buffer.textcache+2*eax]
-	lea edi, [buffer.textcache+2*eax]
+	lea esi, [buffer.textcache+2*edx]
+	lea edi, [buffer.textcache+2*edx]
     cld
 	.lp:
-    lodsw
-    mov ah,[format.select]
-	stosw
-    loop .lp
+        lodsw
+        mov ah,[format.select]
+	    stosw
+        loop .lp
 endSubR 8
 
 

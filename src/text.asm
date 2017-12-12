@@ -674,8 +674,7 @@ copy.line:
 		;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
 		mov ecx, edx					;la cantidad de movimientos q hago:					
 		sub ecx, eax					;la pos final - pos inicial
-		inc ecx
-		
+		;inc ecx
 		lea esi, [text+eax]				;empiezo a copiar desde el texto en la posicion del principio
 		mov edi, select.cache			;hacia el select cache
 		rep movsb						;y copio desde un lugar a otro la cantidad de veces calculada
