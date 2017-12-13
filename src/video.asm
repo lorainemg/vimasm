@@ -16,11 +16,11 @@ section .bss
     modetext resb 10
     buffer.textcache    resw 0xf00
 
-section .data
+section .data 
     ;Formats
     format.cursor       db BG.CYAN|0xf
     format.text         db BG.BRIGHT|0xf
-    format.select       db 0x90
+    format.select       db 0x9f
     format.search       db 0x00
     format.enter        db BG.YELLOW
     format.tap          db BG.RED
@@ -45,7 +45,7 @@ section .data
     %define buffer              0xB8000
     %define buffer.lastrow     0xb8f00
 
-      ;     0 1 2 3 4 5 6 7 8 9 1011121314151617181920212223   
+        
 sprite db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf ;1
        db     0xf,0xf,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x2,0xa,0xf,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xf ;0x2
        db     0xf,0xf,0x0,0xf,0x7,0x7,0x7,0x7,0x7,0x8,0x0,0x2,0x2,0xa,0x0,0xf,0x7,0x7,0x7,0x7,0x7,0x8,0x0,0xf ;3
@@ -179,16 +179,15 @@ video.Update:
         call video.UpdateText
         mov dl, [videoflags]
     
-    .trycursor:
-        test dl,  hidecursor
-        jnz .tryselection
-        call video.UpdateCursor
-    
     .tryselection:
         test dl, hideselection
-        jnz .trysearch
+        jnz .trycursor
         call video.UpdateSelection
    
+    .trycursor:
+        test dl,  hidecursor
+        jnz .trysearch
+        call video.UpdateCursor
     .trysearch:
  ;      test al, hidesearch
  ;       jnz .end
@@ -295,6 +294,7 @@ video.UpdateSelection:
 
 	
     .mode:
+
 	push edx
     push eax
 
@@ -302,7 +302,7 @@ video.UpdateSelection:
 	cmp dword [select.mode],0
 	jne .tryline
 	call video.UpdateSelection.normal
-    
+
     jmp .end
     .tryline:
 	
@@ -311,8 +311,7 @@ video.UpdateSelection:
 	call video.UpdateSelection.line
     jmp .end
     .tryblock:
-    pop eax
-    pop eax
+    call video.UpdateSelection.block
     ;	call select.copy.block
 .end:
 endSubR 0
@@ -322,12 +321,39 @@ endSubR 0
 ;push dword start: ebp + 4
 video.UpdateSelection.normal:
 startSubR
-	mov eax,[ebp+4]
+
+
+
+    mov eax ,[scroll]
+    push eax
+    call lines.startsline
+	cmp eax,[ebp+4]
+    jbe .trydown
+    mov edx,[ebp+8]
+    sub edx,eax
+    mov eax,0
+    ;break
+    jmp .paint
+    .trydown:
 	mov edx,[ebp+8]
+    sub edx,eax
+    mov ecx,eax
+    mov eax,[ebp+4]
+    sub eax,ecx
+    .paint:
+    
+
+
+
+    
 	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
 	mov ecx, edx					;la cantidad de movimientos q hago:					
 	sub ecx, eax
-    inc ecx					;
+    inc ecx		
+    cmp ecx,1920
+    jbe .print
+    mov ecx,1920
+    .print:		;
 	lea edi, [buffer.textcache+2*eax]
     lea esi, [buffer.textcache+2*eax]
     cld
@@ -355,21 +381,74 @@ startSubR
 	push eax                        ;pongo la lina como parametro
 	call lines.endline				;busco el final de la linea
     dec eax 
-
+    push eax
+    push edx 
+    call video.UpdateSelection.normal
 	;Se copiaria, desde el principio de la linea de inicio hasta el final de la linea final
-	mov ecx, eax					;la cantidad de movimientos q hago:					
-	sub ecx, edx					;
-	inc ecx
-	lea esi, [buffer.textcache+2*edx]
-	lea edi, [buffer.textcache+2*edx]
-    cld
-	.lp:
-        lodsw
-        mov ah,[format.select]
-	    stosw
-        loop .lp
+    
 endSubR 8
 
+video.UpdateSelection.block:
+        startSubR
+
+    ;calculo linea final
+    push dword [ebp+8]
+    call lines.line
+    mov ecx,eax                	;calculo cual es la linea final  
+
+    ;calculo caracter final
+    push eax 					;salvo linea final
+    call lines.startsline
+    mov ebx,[ebp+8]
+    sub ebx,eax					;ebx = caracter final
+
+    ;calculo linea inicial
+    push dword [ebp+4]
+    call lines.line
+    push eax 					;salvo linea inicial
+   
+    
+    ;calculo caracter inicial
+    push eax					;se consume con el llamado de abajo
+    call lines.startsline		;donde empieza la inicial
+    mov edx,[ebp+4]
+    sub edx,eax    				;edx = comienza inicial
+
+    pop eax
+    cmp eax,[scroll]
+    ja ._lp
+    mov eax,[scroll]
+    ._lp
+    sub ecx,eax					;ecx = cantidad de lineas del bloque
+    inc ecx
+    .lp:
+    push eax
+    push eax
+    call lines.startsline
+    cmp ebx,edx
+    ja .invert
+    add eax,edx
+    push eax 
+    sub eax,edx
+    add eax,ebx
+    push eax
+    jmp .normalcall
+    .invert:
+    add eax,ebx
+    push eax 
+    sub eax,ebx
+    add eax,edx
+    push eax
+    .normalcall:
+
+
+
+    call video.UpdateSelection.normal
+    pop eax
+    inc eax
+    loop .lp
+    
+endSubR 8
 
 video.UpdateSearch:
     startSubR
