@@ -44,6 +44,39 @@ section .data
     %define buffer.textlength   0x780
     %define buffer              0xB8000
     %define buffer.lastrow     0xb8f00
+
+      ;     0 1 2 3 4 5 6 7 8 9 1011121314151617181920212223   
+sprite db     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ;1
+       db     0,0,1,1,1,1,1,1,1,1,1,2,4,0,1,1,1,1,1,1,1,1,1,0 ;2
+       db     0,0,1,0,5,5,5,5,5,6,1,2,2,4,1,0,5,5,5,5,5,6,1,0 ;3
+       db     0,0,1,0,5,5,5,5,5,6,1,2,2,2,1,0,5,5,5,5,5,6,1,0 ;4
+       db     0,0,1,1,0,5,5,5,6,1,1,2,2,2,1,1,0,5,5,5,5,6,1,0 ;5
+       db     0,0,0,1,0,5,5,5,6,1,2,2,2,1,1,0,5,5,5,5,6,1,1,0 ;6
+       db     0,0,0,1,0,5,5,5,6,1,2,2,1,1,0,5,5,5,5,6,1,1,0,0 ;7
+       db     0,0,0,1,0,5,5,5,6,1,2,1,1,0,5,5,5,5,6,1,1,0,0,0 ;8
+       db     0,0,0,1,0,5,5,5,6,1,1,1,0,5,5,5,5,6,1,1,0,0,0,0 ;9
+       db     0,0,0,1,0,5,5,5,6,1,1,0,5,5,5,5,6,1,1,2,4,0,0,0 ;10
+       db     0,0,2,1,0,5,5,5,6,1,0,5,5,5,5,6,1,1,2,2,2,4,0,0 ;11
+       db     0,2,2,1,0,5,5,5,5,5,5,5,5,5,6,1,1,2,2,2,2,2,4,0 ;12
+       db     0,2,2,1,0,5,5,5,5,5,5,5,5,6,1,1,2,2,2,2,2,2,3,0 ;13
+       db     0,0,2,1,0,5,5,5,5,5,5,1,1,1,1,2,2,2,2,2,2,3,0,0 ;14
+       db     0,0,0,1,0,5,5,5,5,5,5,1,5,1,2,2,2,2,2,2,3,0,0,0 ;15
+       db     0,0,0,1,0,5,5,5,5,5,1,1,1,1,1,1,1,1,1,1,1,1,1,0 ;16
+       db     0,0,0,1,0,5,5,5,5,6,1,5,5,1,5,5,5,5,5,5,5,5,1,0 ;17
+       db     0,0,0,1,0,5,5,5,6,1,1,1,5,1,5,5,5,5,5,5,5,1,1,0 ;18
+       db     0,0,0,1,0,5,5,6,1,1,2,1,5,1,5,1,1,5,1,1,5,1,0,0 ;19
+       db     0,0,0,1,0,5,6,1,1,2,2,1,5,1,5,1,1,5,1,1,5,1,1,0 ;20
+       db     0,0,0,1,1,1,1,1,0,2,2,1,5,1,5,5,1,5,5,1,5,5,1,0 ;21
+       db     0,0,0,0,0,0,0,0,0,0,2,1,1,1,1,1,1,1,1,1,1,1,1,0 ;22
+       db     0,0,0,0,0,0,0,0,0,0,0,2,3,0,0,0,0,0,0,0,0,0,0,0 ;23
+       db     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ;24
+
+
+
+
+
+
+
 ;externs del texto
 extern text
 extern cursor,lines.current,lines.lengths,lines.endline,lines.startsline,lines.endline,lines.starts,lines.line
@@ -51,6 +84,123 @@ extern select.start,select.mode
 
 
 section .text
+global video.paintIcon
+video.paintIcon:
+mov esi,sprite
+mov edi,buffer 
+
+mov ecx,25
+.rows:
+push ecx
+mov ecx,16
+mov ah,0xf0
+rep stosw
+mov ecx,24
+.lp:
+lodsb 
+mov ah,al
+cmp ah,0
+jne .black
+mov ah,0xf
+jmp .print
+.black:
+cmp ah,1
+jne .green
+mov ah,0
+jmp .print
+.green:
+cmp ah,2
+jne .darkGreen
+mov ah,2
+jmp .print
+.darkGreen:
+cmp ah,3
+jne .lightGreen
+mov ah,0
+jmp .print
+.lightGreen:
+cmp ah,4
+jne .grey
+mov ah,2|8
+jmp .print
+.grey:
+cmp ah,5
+jne .darkGray 
+mov ah,7
+jmp .print
+.darkGray:
+mov ah,8
+.print:
+shl ah,4
+xor al,al
+
+stosw
+stosw
+loop .lp
+mov ecx,16
+mov ah,0xff
+rep stosw
+pop ecx
+loop .rows
+ret
+
+
+;push line
+video.rowsLine:
+startSubR
+mov eax,[ebp+4]
+mov edx,[lines.lengths+4*eax]
+mov eax,edx
+mov ecx,0
+.lp:
+cmp eax,0
+jl .end
+inc ecx
+sub eax,[buffer.width]
+jmp .lp
+.end:
+mov eax,ecx
+endSubR 4
+
+video.updateScroll:
+    startSubR
+       
+        mov eax,[scroll]        
+        cmp eax,[lines.current]
+        je .end
+        jb .down
+        ja .up
+        .up:
+       mov edx,[lines.current]
+       mov [scroll],edx
+       jmp .end
+        .down:
+        mov ecx,[lines.current]
+
+        sub ecx,[scroll]
+        
+        inc ecx
+        .lpd:
+        push eax 
+        push eax 
+        call video.rowsLine 
+        add edx,eax
+
+        cmp edx,[buffer.height]
+        jb .nd
+        mov eax,[scroll]
+        push eax
+        call video.rowsLine
+        sub edx,eax 
+        inc dword [scroll] 
+        
+        .nd:
+        pop eax
+        inc eax
+        loop .lpd
+
+        .end:
+    endSubR 0
 
 
 ;call:
@@ -58,6 +208,8 @@ section .text
 global video.Update
 video.Update:
     startSubR
+        call video.updateScroll
+        
         call video.UpdateText
         mov dl, [videoflags]
     
@@ -80,6 +232,7 @@ video.Update:
 
    .end:
    call video.UpdateBuffer
+   
 endSubR 0
 
 video.UpdateBuffer:
@@ -196,16 +349,21 @@ video.UpdateSelection:
 .end:
 endSubR 0
 
+
+;call:
+;push dword start  ebp+8
+;push dword end    ebp+4
 video.UpdateSelection.normal:
 startSubR
 	mov eax,[ebp+4]
 	mov edx,[ebp+8]
+    
 	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
 	mov ecx, eax					;la cantidad de movimientos q hago:					
 	sub ecx, edx
-    inc ecx					;
-	mov edi, buffer.textcache
-    mov esi,buffer.textcache
+    ;inc ecx					
+	lea edi,[buffer.textcache + 2*edx]
+    mov esi,[buffer.textcache + 2*edx]
     cld
 	.lp:
     lodsw
