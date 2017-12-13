@@ -81,6 +81,7 @@ mode.visual:
     
     .endword:
     ;Selecciona hasta el final de palabra
+        push dword[cursor]
         call lines.endword
         mov [cursor], eax
     jmp .end

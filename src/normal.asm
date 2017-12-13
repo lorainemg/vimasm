@@ -5,32 +5,74 @@
 extern isKey1,isKey2,isKey3, isNum, getChar
 ;text externs
 extern cursor.moveH, cursor.moveV, cursor.moveline, cursor
-extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes
+extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes, eraseline
 extern select.copy.normal, copy.line
 ;modes externs
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste
 ;main externs
 extern vim.update, video.Update, videoflags
 
-;Para realizar el control del los operadores:
+;Para realizar las repeticiones de los operadores:
 ;Tine como parametros una funcion que recibe 2 parametros:primero las veces
 ;que se repite una operacion y luego el modo en que se realiza la operacion
 ;call: operator parameter, function
-%macro operator 2
-	inRange 48, 57, byte[lastkey+1]		;hay un numero en lastkey?
+%macro repetition 2
+	inRange 48, 57, byte[lastkey+1]	;hay un numero en lastkey?
 	cmp eax, 0						;el valor de la ultima tecla es un numero? 
-	je %%.start						;si no lo es, entonces simplemente voy al final del textos
-	xor eax, eax
-	mov al, [lastkey+1]
-	sub eax, 49
+	je %%.start						;si no lo es, entonces simplemente hago una sola repeticion
+	xor eax, eax					;si es un numero:
+	mov al, [lastkey+1]				;al = ASCII del numero
+	sub eax, 49						;convierto el numero a entero
 	%%.start:
-	push eax
-	push dword %1
-	call %2
+		push eax					;1er parametro: cantidad de repeticiones
+		push dword %1				;2do parametro: modo de la funcion
+		call %2						;luego llamo a la funcion
+%endmacro
+
+;Macro para limpiar los valores de lastKey
+%macro clean 0
+	mov byte [lastkey], 0
+	mov byte [lastkey+1], 0
+	mov byte [lastkey+2], 0
+%endmacro
+
+;Para simplificar los operadores de copiar y borrar
+;call: letra del operador (identifica el operador), funcion (relacionado con el operador)
+%macro operator 2
+	cmp byte[lastkey], %1			;si la tecla del operador fue la ultima que se presiono
+	je %%.line						;entonces realizo la operacion en modo linea
+	mov byte[lastkey], %1			;si no, entonces guardo en lastKey el caracter de la tecla que se presiono
+	jmp %%.end						;y termino
+	%%.line:	
+		repetition 1, %2			;busco las repeticiones que pudiera tener el operador, y llamo a la funcion en modo linea
+	%%.end:
+%endmacro
+
+;Para simplificar los movimientos de mover al final de palabra y mover al final de linea
+;call: moveEnd mode (modo que se realiza)
+%macro moveEnd 1
+	cmp byte[lastkey], 'y'			;si la tecla que se presiono fue y, entonces copio
+	je %%.yank
+	cmp byte[lastkey], 'd'			;si fue d borro
+	je %%.delete
+	cmp byte[lastkey], 'c'			;y de ser c borro tambien, pero luego entro en modo insercion
+	je %%.delete
+	jmp %%.end
+	%%.yank:						;Para copiar:
+		repetition %1, copyOperator	;busco las repeticiones que pudieran haber y entro en el modo correspondiente a copiar
+		jmp %%.end
+	%%.delete:						;Para eliminar:
+		repetition %1, eraseOperator ;busco las repeticiones que pudieran haber y entro en el modo correspondient a borrar
+		cmp byte[lastkey], 'c'		;se entro en modo reemplazar?
+		jne %%.end					;si no se hizo, entonces termino
+		clean						;sino, limpio lastkey
+		call mode.insert			;y entro en modo insetar
+	%%.end:
+	clean							;limpio lastkey
 %endmacro
 
 section .data
-lastkey db 0, 0, 0
+lastkey db 0, 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
 
 section .text
 
@@ -49,11 +91,11 @@ mode.normal:
 	;Cambiar de modo:
 		checkKey1 key.i, .insertmode			;si se presiono i
 		checkKey2 key.shiftL, key.v, .visualLinemode	;si se presiono shift+v
+		checkKey2 key.ctrl, key.v, .visualBlockmode	;si se presiono ctrl+v
 		checkKey1 key.v, .visualmode 			;si se presiono v
 	
 
 	;Optativos:
-		checkKey2 key.ctrl, key.v, .visualBlockmode	;si se presiono ctrl+v
 		checkKey1 key.r, .replacemode			;si se presiono r
 
 
@@ -65,7 +107,6 @@ mode.normal:
 		checkKey2 key.shiftL, key.g, .goLine	;si se presiono shift+g
 		checkKey1 key.g, .goStart				;si se presiono 2 vecer g
 
-	;TODO: Faltan los operadores + repeticiones + movimiento
 	;Operadores:
 		checkKey1 key.y, .copy
 		checkKey1 key.d, .erase
@@ -84,22 +125,22 @@ mode.normal:
 
 	;Comandos de movimientos:
 		.moveright:					;mueve el cursor a la derecha
-			mov byte[lastkey], 0
+			clean
 			push dword 1
 			call cursor.moveH			
 			jmp .end
 		.moveleft:					;mueve el cursor a la izquierda
-			mov byte[lastkey], 0
+			clean
 			push dword -1
 			call cursor.moveH
 			jmp .end
 		.moveup:					;mueve el cursor hacia arriba
-			mov byte[lastkey], 0
+			clean
 			push dword -1
 			call cursor.moveV
 			jmp .end
 		.movedown:					;mueve el cursor para abajo
-			mov byte[lastkey], 0
+			clean
 			push dword 1
 			call cursor.moveV
 			jmp .end
@@ -107,45 +148,45 @@ mode.normal:
 	;Cambiar de modo:
 		.insertmode:
 		;Logica para cambiar al modo insertar
-			mov byte[lastkey], 0
+			clean
 			call mode.insert
 			jmp .end
 		.visualmode:
 		;Logica para cambiar al modo visual con seleccion estandar
-			mov byte[lastkey], 0
+			clean
 			push dword 0
 			call start.visual
 			call mode.visual
 			jmp .end
 		.visualLinemode:
 		;Logica para cambiar al modo visual con seleccion en modo linea
-			mov byte[lastkey], 0
+			clean
 			push dword 1
 			call start.visual
 			call mode.visual
 			jmp .end
 		.visualBlockmode:
 		;Logica para cambiar al modo visual con seleccion en modo bloque
-			mov byte[lastkey], 0
+			clean
 			push dword 2
 			call start.visual
 			call mode.visual
 			jmp .end
 		.replacemode:
 		;Logica para cambiar al modo reemplazar
-			mov byte[lastkey], 0
+			clean
 			call mode.replace
 			jmp .end
 
 	;Comandos especiales:
 		.paste:						
 		;Logica para pegar
-			mov byte[lastkey], 0
+			clean
 			call select.paste
 			jmp .end
 		.undo:						
 		;Logica para deshacer una accion
-			mov byte[lastkey], 0
+			clean
 			jmp .end
 		.goStart:
 		;Logica para ir al pricipio del text
@@ -153,7 +194,7 @@ mode.normal:
 			jne .no							;si no lo fue, entonces no realizo ninguna accion
 			push dword 0					;si lo fue:
 			call cursor.moveline			;muevo el cursor hacia el inicio de la preimera linea
-			mov byte[lastkey], 0			;reestablezco el valor de la ultima tecla en 0
+			clean							;reestablezco el valor de la ultima tecla
 			.no:
 			mov byte[lastkey], 'g'			;si no hice ninguna accion, entonces pongo como caracter de mi ultima tecla g
 			jmp	.end
@@ -167,66 +208,45 @@ mode.normal:
 
 		.copy:
 		;Logica para copiar con repeticion + operadores de movimiento
-			cmp byte[lastkey], 'y'
-			je .line
-			mov byte[lastkey], 'y'
-			jmp .end
-			.line:	
-				operator 1, copyOperator
+			operator 'y', copyOperator
 			jmp .end
 		.erase:
 		;Logica para borrar con repeticion + operadores de movimiento
-			cmp byte[lastkey], 'd'
-			je .full
-			mov byte[lastkey], 'd'
-			jmp .end
-			.full:
-				operator 1, eraseOperator
+			operator 'd', eraseOperator
 			jmp .end			
 		.replace:
 		;Logica para reemplazar con repeticion + operadores de movimiento
-			mov byte[lastkey], 'r'
-		 	jmp .end
+			cmp byte[lastkey], 'c'			;si el ultimo caracter analizado fue c
+			je .line						;entonces, realizo la operacion
+			mov byte[lastkey], 'c'			;si no, cambio el valor de la ultima tecla
+			jmp .end						;y voy al final
+			.line:							;Para realizar la operacion:
+				repetition 1, eraseOperator	;busco las repeticiones y entro en modo linea a eraseOperator
+				clean						;limpio los valores de lastKey
+				call mode.insert			;y llamo al modo insertar
+			jmp .end			
 
 		.endline:
 		;Logica para realizar la operacion hasta el final de una linea
+			moveEnd 3						
 			jmp .end  
 		.startline:
 		;Logica para realizar la operacion hacia el inicio de una linea
-			xor ebx, ebx
-			mov bl, [lastkey]
-			cmp byte[lastkey], 'y'
-			je .y
-			jmp .end
-			.y:
-			push dword 2
-			call copyOperator
+			call moveStartLine
 			jmp .end
 		.endword:
 		;Logica para realizar la operacion hacia el final de una palabra
-			xor ebx, ebx
-			mov bl, [lastkey]
-			cmp byte[lastkey], 'y'
-			je .yank
-			cmp byte[lastkey], 'd'
-			je .delete
-			.yank:
-				operator 0, copyOperator
-				mov byte[lastkey], 0
-				jmp .end
-			.delete:
-				operator 0, eraseOperator
-				mov byte[lastkey], 0
-				jmp .end
+			moveEnd 0
+			jmp .end
 
 		.num:
 		;Control intermedio para decidir que se hace cuando se presiona un numero
-			cmp byte[lastkey], 'y'			;si no se a presionado ninguna tecla
-			je .tryop						;se guarda el valor del numero en la tecla actual
-			cmp byte[lastkey], 'c'
-			je .tryop
-			cmp byte[lastkey], 'd'
-			je .tryop
+			cmp byte[lastkey], 'y'			;si se presiono y para pegar
+			je .tryop						;intento realizar una operacion
+			cmp byte[lastkey], 'c'			;si se presiono c para reemplazar
+			je .tryop						;intento realizar una operacion
+			cmp byte[lastkey], 'd'			;si se presiono d para borrar
+			je .tryop						;intento realizar una operacion
 			mov byte[lastkey], al			;para los movimientos por el fichero
 			jmp .end
 			.tryop:							;si no, es una operacion lo que esta en lastkey
@@ -236,7 +256,6 @@ mode.normal:
 			jmp .end
 
 	.end:
-	;Update
 	or byte[videoflags], 1 << 1
 	call video.Update
 	.end2:
@@ -244,6 +263,31 @@ mode.normal:
 	jmp mode.normal
 ret
 
+moveStartLine:
+	startSubR
+		cmp byte[lastkey], 'y'
+		je .yank
+		cmp byte[lastkey], 'd'
+		je .delete
+		cmp byte[lastkey], 'c'
+		je .delete
+		jmp .end
+		.yank:
+			push dword 0
+			push dword 2
+			call copyOperator
+			jmp .end
+		.delete:
+			push dword 0
+			push dword 2
+			call eraseOperator
+			cmp byte[lastkey], 'c'
+			jne .end
+			clean
+			call mode.insert
+		.end:
+		clean
+	endSubR 0
 
 goNumLine:	
 	startSubR
@@ -255,19 +299,18 @@ goNumLine:
 		sub al, 49						;hago operaciones para convertirlo de ASCII a numero
 		push eax
 		call cursor.moveline			;y muevo el cursor en el principio de esa linea
-		mov byte[lastkey], 0			;desactualizo el valor de la ultima tecla
 		jmp .end
 		.goEnd:
 		push dword[lines.last]			;para ir al final del texto:
 		call cursor.moveline			;pongo el cursor en el primer caracter de la primera linea
-		mov byte[lastkey], 0			;desactualizo el valor de la ultima tecla	
 		.end:
+		clean							;desactualizo el valor de la ultima tecla	
 	endSubR 0
 
 ;Copia 
 ;call:
 ;push dword times: ebp + 8
-;push dword mode: ebp + 4	(0 palabra, 1 linea, 2 principio de linea)
+;push dword mode: ebp + 4	(0 palabra, 1 linea, 2 principio de linea, 3 final de linea)
 copyOperator:
 	startSubR
 		mov eax, [ebp+4]			;accedo al modo en que voy a copiar
@@ -275,6 +318,8 @@ copyOperator:
 		je .modeline				;voy a copiar en modo linea
 		cmp eax, 2
 		je .modestart
+		cmp eax, 3
+		je .modeend
 	.modeword:
 		push dword[ebp+8]			;pongo la cantidad de veces que voy a copiar como parametro
 		call copyOperator.word		;y copio las veces contadas
@@ -285,6 +330,10 @@ copyOperator:
 		jmp .end
 	.modestart:
 		call copyOperator.start
+		jmp .end
+	.modeend:
+		push dword[ebp+8]
+		call copyOperator.endline
 	.end:
 	endSubR 8
 
@@ -319,10 +368,26 @@ copyOperator.start:
 	startSubR
 		mov eax, [lines.current]
 		mov edx, [lines.starts+4*eax]
+		mov eax, dword[cursor]
 		push dword[cursor]
 		push edx
 		call select.copy.normal
 	endSubR 0
+
+;call:
+;push dword time: ebp + 4
+copyOperator.endline:
+	startSubR
+		mov ecx, [ebp+4]
+		mov edx, [lines.current]
+		add edx, ecx
+		push edx
+		call lines.endline
+		dec eax
+		push eax
+		push dword[cursor]
+		call select.copy.normal
+	endSubR 4
 
 ;Busca la posicion final de un conjunto de palabras a partir de la posicion del cursor
 ;call:
@@ -341,23 +406,35 @@ posWords:
 
 ;call:
 ;push dword times: ebp + 8
-;push dword mode: ebp + 4 (0 palabra, 1 linea)
+;push dword mode: ebp + 4 (0 palabra, 1 linea, 2 principio de linea, 3 final de linea)
 eraseOperator:
 	startSubR
 		mov eax, [ebp + 4]
 		cmp eax, 1
 		je .modeline
+		cmp eax, 2
+		je .modestart
+		cmp eax, 3
+		je .modeend
 	.modeword:
 		push dword[ebp + 8]
 		call eraseOperator.word
 		jmp .end
 	.modeline:
-		push dword[cursor]
-		push dword[lines.current]
+		mov edx, [lines.current]	;mi linea actual
+		mov eax, [lines.starts+4*edx]
+		push eax					
 		push dword[ebp+8]
-		call eraselines
-		pop dword[lines.current]
-		pop dword[cursor]
+		call eraseOperator.lines	;llamo para borrar las veces calcualdas
+		jmp .end
+	.modestart:
+		push dword[cursor]
+		call eraseline
+		jmp .end
+	.modeend:
+		push dword[cursor]	
+		push dword[ebp+8]	
+		call eraseOperator.lines
 		.end:
 	endSubR 8
 
@@ -377,23 +454,23 @@ eraseOperator.word:
 		call erasetimes	
 	endSubR 4
 
-;call
-;push dword times
-eraselines:
+;Borra lineas a partir de una posicion especifica
+;call:
+;push dword start: ebp + 8
+;push dword times: ebp + 4
+eraseOperator.lines:
 	startSubR
-		mov edx, [lines.current]	;mi linea actual
-		mov eax, [lines.starts+4*edx]
-		push eax					;guardo el valor del principio
+		mov edx, [lines.current]
 		add edx, [ebp + 4]			;le adiciono a la linea actual la cantidad de lineas que voy a copiar
+		mov [lines.current], edx
 		push edx					;para acceder a la linea final
 		call lines.endline			;busco el final de esa linea
-		mov [cursor], eax
+		dec eax
+		mov [cursor], eax			;pongo el cursor en el final de esa linea
 		mov ecx, eax				;ecx = pos final
-		pop eax
+		mov eax, [ebp+8]
 		sub ecx, eax				;ecx = pos final - pos inicial
-		dec ecx
+		inc ecx
 		push ecx
-	;	break
-		call erasetimes				;llamo para borrar las veces calcualdas
-	endSubR 4
-
+		call erasetimes	
+	endSubR 8

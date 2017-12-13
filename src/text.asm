@@ -17,7 +17,7 @@ section .bss
 	lines.lengths 	resd 800
 
 	select.cache		resb	65535
-section .data
+	section .data
 	global cursor
 	cursor 		dd		0			;la posicion del cursor
 	
@@ -193,6 +193,7 @@ text.movebackward:
 	dec ebx									;ebx= la linea anterior a la actual
 	push ebx
 	call lines.endline						;pregunto por el final de esa linea
+	dec eax
 	mov [cursor], eax						;pongo el cursor en el final de la linea
 	dec dword[lines.current]				;decremento mi linea actual (la linea actual es la que estoy borrando)
 	pop eax									;recupero cual era mi linea actual
@@ -385,7 +386,7 @@ lines.newline:
 
 		push dword [lines.current]
 		call lines.endline					;eax = fin de linea
-		mov edx,eax							;salvo en edx
+		mov edx, eax						;salvo en edx
 		push edx							;salvo fin de linea
 		push dword [lines.current]
 		call lines.startsline				;eax = inicio de linea
