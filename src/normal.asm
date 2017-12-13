@@ -93,11 +93,8 @@ mode.normal:
 		checkKey2 key.shiftL, key.v, .visualLinemode	;si se presiono shift+v
 		checkKey2 key.ctrl, key.v, .visualBlockmode	;si se presiono ctrl+v
 		checkKey1 key.v, .visualmode 			;si se presiono v
-	
-
-	;Optativos:
 		checkKey1 key.r, .replacemode			;si se presiono r
-
+	
 
 	;Controles optativos:
 		checkKey1 key.u, .undo					;si se presiono u
@@ -112,8 +109,8 @@ mode.normal:
 		checkKey1 key.d, .erase
 		checkKey1 key.c, .replace
 	;Operadores de movimiento
-    	checkKey1 key.4, .endline    
-    	checkKey1 key.6, .startline
+    	checkKey2 key.shiftL, key.4, .endline    
+    	checkKey2 key.shiftL, key.6, .startline
     	checkKey1 key.w, .endword
 
 		checknum .num
@@ -251,44 +248,46 @@ mode.normal:
 			jmp .end
 			.tryop:							;si no, es una operacion lo que esta en lastkey
 			mov byte[lastkey+1], al			;se deja la operacion en el primer byte, y en el segundo se pone el numero
-			xor ebx, ebx
-			mov bl, byte[lastkey+1]
 			jmp .end
 
 	.end:
-	or byte[videoflags], 1 << 1
-	call video.Update
+	or byte[videoflags], 1 << 1				;para terminar, se activa el bit de esconder la seleccion
+	call video.Update						;y se actualiza el video
 	.end2:
 	call vim.update
 	jmp mode.normal
 ret
 
+;Movimiento para realizar operaciones en el principio de una linea
 moveStartLine:
 	startSubR
-		cmp byte[lastkey], 'y'
+		cmp byte[lastkey], 'y'				
 		je .yank
 		cmp byte[lastkey], 'd'
 		je .delete
 		cmp byte[lastkey], 'c'
 		je .delete
 		jmp .end
-		.yank:
-			push dword 0
-			push dword 2
-			call copyOperator
+		.yank:							;Copiar:
+			push dword 0				;ninguna repeticion
+			push dword 2				;copio en modo principio de linea
+			call copyOperator			;llamo para copiar
 			jmp .end
-		.delete:
-			push dword 0
-			push dword 2
-			call eraseOperator
-			cmp byte[lastkey], 'c'
-			jne .end
-			clean
-			call mode.insert
+		.delete:						;Eliminar:
+			push dword 0				;ninguna repeticion
+			push dword 2				;copio en modo principio de linea
+			call eraseOperator			;llamo para borrar
+			cmp byte[lastkey], 'c'		;se esta en modo reemplazar?
+			jne .end					;si no se esta, entonces termino
+			clean						;si se esta en modo reemplazar limpio lastkey
+			call mode.insert			;y llamo a modo insertar
 		.end:
 		clean
 	endSubR 0
 
+;Va a un numero de linea especifico
+;call:
+;call goNumLine
 goNumLine:	
 	startSubR
 		inRange 48, 57, [lastkey]		;para moverme en una linea en especifica:
@@ -313,80 +312,82 @@ goNumLine:
 ;push dword mode: ebp + 4	(0 palabra, 1 linea, 2 principio de linea, 3 final de linea)
 copyOperator:
 	startSubR
-		mov eax, [ebp+4]			;accedo al modo en que voy a copiar
-		cmp eax, 1					;si es modo linea
-		je .modeline				;voy a copiar en modo linea
-		cmp eax, 2
-		je .modestart
-		cmp eax, 3
+		mov eax, [ebp+4]				;accedo al modo en que voy a copiar
+		cmp eax, 1						;si es modo linea
+		je .modeline					;voy a copiar en modo linea
+		cmp eax, 2						;si es modo principio de linea
+		je .modestart				
+		cmp eax, 3						;si es modo final de linea
 		je .modeend
-	.modeword:
-		push dword[ebp+8]			;pongo la cantidad de veces que voy a copiar como parametro
-		call copyOperator.word		;y copio las veces contadas
+	.modeword:							;Para copiar hasta el final de una palabra:
+		push dword[ebp+8]				;pongo la cantidad de veces que voy a copiar como parametro
+		call copyOperator.word			;y copio las veces contadas
 		jmp .end
-	.modeline:						;Para copiar en modo linea:
-		push dword[ebp+8]			;y llamo para copiar
-		call copyOperator.line
+	.modeline:							;Para copiar en modo linea:
+		push dword[ebp+8]				;guardo las veces que tengo que copiar
+		call copyOperator.line			;y llamo para copiar lineas
 		jmp .end
-	.modestart:
-		call copyOperator.start
+	.modestart:							;Para copiar en modo principio de linea:
+		call copyOperator.start			;llamo para copiar
 		jmp .end
-	.modeend:
-		push dword[ebp+8]
-		call copyOperator.endline
+	.modeend:							;Para copiar en modo final de linea
+		push dword[ebp+8]				;guardo las veces que quiero copiar
+		call copyOperator.endline		;y llamo para copiar
 	.end:
 	endSubR 8
 
+;El operador de copiar en modo final de palabra
 ;call:
 ;push dword times: ebp + 4
 copyOperator.word:
 	startSubR
-		mov edx, [ebp+4]			;edx + 1 = catidad de palabras que voy a copiar
+		mov edx, [ebp+4]				;edx + 1 = catidad de palabras que voy a copiar
 		inc edx					
 		push edx					
-		call posWords				;busco la hasta donde esta el final de las palabras
+		call posWords					;busco la hasta donde esta el final de las palabrass
 		dec eax
-		push eax					;pongo la pos final de la palabra como parametro
-		push dword[cursor]			;pongo la pos inicial como parametro
-		call select.copy.normal		;copio desde mi posicion hasta el final de la palabra
+		push eax						;pongo la pos final de la palabra como parametro
+		push dword[cursor]				;pongo la pos inicial como parametro
+		call select.copy.normal			;copio desde mi posicion hasta el final de la palabra
 	endSubR 4
 
+;El operador de copiar en modo linea
 ;call:
 ;push dword time: ebp + 4
 copyOperator.line:
 	startSubR
-		mov eax, [lines.current]	;eax = linea actual
+		mov eax, [lines.current]		;eax = linea actual
 		mov edx, eax				
-		add edx, [ebp+4]			;edx = linea actual + cantidad de veces que se repite la accion
-		push edx					;el final de la copia sera edx
-		push eax					;el inicio eax
+		add edx, [ebp+4]				;edx = linea actual + cantidad de veces que se repite la accion
+		push edx						;el final de la copia sera edx
+		push eax						;el inicio eax
 		call copy.line			
 	endSubR 4
 
+;El operador de copiar en modo principio de linea
 ;call:
 copyOperator.start:
 	startSubR
-		mov eax, [lines.current]
-		mov edx, [lines.starts+4*eax]
-		mov eax, dword[cursor]
-		push dword[cursor]
-		push edx
-		call select.copy.normal
+		mov eax, [lines.current]		;eax = linea actual
+		mov edx, [lines.starts+4*eax]	;edx = principio de la linea actual
+		push dword[cursor]				;el final de la copia es la posicion del cursor			
+		push edx						;el principio es el inicio de linea
+		call select.copy.normal			;copio en el rango especificado
 	endSubR 0
 
+;El operadore de copiar en modo final de linea
 ;call:
-;push dword time: ebp + 4
+;push dword times: ebp + 4
 copyOperator.endline:
-	startSubR
-		mov ecx, [ebp+4]
-		mov edx, [lines.current]
-		add edx, ecx
-		push edx
-		call lines.endline
-		dec eax
-		push eax
-		push dword[cursor]
-		call select.copy.normal
+	startSubR		
+		mov edx, [lines.current]		
+		add edx, [ebp+4]				;edx = linea actual + cantidad de lineas que se quieren copiar
+		push edx						;es decir, edx es la ultima linea a copiar
+		call lines.endline				;pregunto por el final de esa linea
+		dec eax							;eax = final
+		push eax						;pongo el final de mi copia
+		push dword[cursor]				;la posicion del cursor es el principio de la copia
+		call select.copy.normal			;llamo a copiar normal
 	endSubR 4
 
 ;Busca la posicion final de un conjunto de palabras a partir de la posicion del cursor
@@ -401,57 +402,59 @@ posWords:
 		push eax					;pongo la posicion en la que estoy ahora como parametro
 		call lines.endword			;y pregunto por la posicion final de esa palabra, eax se va incrementando
 		inc eax
-		loop .lp1	
+		loop .lp1					;repito el ciclo las veces contadas
 	endSubR 4
 
+;Operador para borrar
 ;call:
 ;push dword times: ebp + 8
 ;push dword mode: ebp + 4 (0 palabra, 1 linea, 2 principio de linea, 3 final de linea)
 eraseOperator:
 	startSubR
-		mov eax, [ebp + 4]
-		cmp eax, 1
+		mov eax, [ebp + 4]			;eax = modo
+		cmp eax, 1					;si el modo es linea
 		je .modeline
-		cmp eax, 2
+		cmp eax, 2					;si el modo es principio de linea
 		je .modestart
-		cmp eax, 3
+		cmp eax, 3					;si el modo es final de linea
 		je .modeend
-	.modeword:
-		push dword[ebp + 8]
-		call eraseOperator.word
+	.modeword:						;Para modo palabra:
+		push dword[ebp + 8]			;pongo las veces que se tienen que borrar las palabras
+		call eraseOperator.word		;y llamo para borrar palabras
 		jmp .end
-	.modeline:
-		mov edx, [lines.current]	;mi linea actual
-		mov eax, [lines.starts+4*edx]
-		push eax					
-		push dword[ebp+8]
+	.modeline:						;Para modo linea:
+		mov edx, [lines.current]	
+		mov eax, [lines.starts+4*edx]	;eax = principio de la linea actual
+		push eax					;el principio de la linea es donde se va a empezar a borrar
+		push dword[ebp+8]			;la cantidad de veces es el parametro dado
 		call eraseOperator.lines	;llamo para borrar las veces calcualdas
 		jmp .end
-	.modestart:
-		push dword[cursor]
-		call eraseline
+	.modestart:						;Para modo principio de linea:
+		push dword[cursor]			;se empieza desde el principio del cursor
+		call eraseline				;y se elimina desde alli hasta el principio de linea
 		jmp .end
-	.modeend:
-		push dword[cursor]	
-		push dword[ebp+8]	
-		call eraseOperator.lines
+	.modeend:						;Para borrar hasta el final de una linea
+		push dword[cursor]			;el principio es la posicion actual del cursor
+		push dword[ebp+8]			;la cantidad de veces es el parametro pasado
+		call eraseOperator.lines	;y se elimina desde alli hasta la ultima posicion de la ultima linea senalada
 		.end:
 	endSubR 8
 
+;Operador de borrar en modo palabra
 ;call:
 ;push dword times: ebp +4
 eraseOperator.word:
 	startSubR
 		mov ecx, [ebp+4]
 		inc ecx
-		push ecx
-		call posWords
-		mov edx, [cursor]
-		dec eax
-		mov [cursor], eax
-		sub eax, edx			
-		push eax					;pongo la pos final de la palabra como parametro
-		call erasetimes	
+		push ecx					;se saca la cuenta de cuantas palabras se tienen que borrar
+		call posWords				;se llama para determinar la posicion de la ultima palabra a borrar
+		dec eax						;se decrementa la ultima posicion (para no borrar el espacio)
+		mov edx, [cursor]			;edx = pos del cursor
+		mov [cursor], eax			;el cursor se pone en la ultima posicion que se va a copiar
+		sub eax, edx				;cantidad de veces que se borran: ultima pos - pos del cursor anterior
+		push eax					;pongo la cantidad de caracteres a borrar como parametro
+		call erasetimes				;y llamo para borrar las veces contadas
 	endSubR 4
 
 ;Borra lineas a partir de una posicion especifica
@@ -465,12 +468,12 @@ eraseOperator.lines:
 		mov [lines.current], edx
 		push edx					;para acceder a la linea final
 		call lines.endline			;busco el final de esa linea
-		dec eax
+		dec eax						;lo decremento en 1 por ser una posicion
 		mov [cursor], eax			;pongo el cursor en el final de esa linea
 		mov ecx, eax				;ecx = pos final
-		mov eax, [ebp+8]
+		mov eax, [ebp+8]			;eax = pos inicial
 		sub ecx, eax				;ecx = pos final - pos inicial
-		inc ecx
-		push ecx
-		call erasetimes	
+		inc ecx						
+		push ecx					;pongo las veces que se tiene que borrar como parametro
+		call erasetimes				;y llamo para borrar las veces contadas
 	endSubR 8

@@ -4,7 +4,7 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, getChar 
 ;text externs
-extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy
+extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy, select.changemode
 ;tratamiento de lineas:
 extern lines.startsline, lines.endline, lines.endword, lines.current
 ;main externs
@@ -34,9 +34,14 @@ mode.visual:
 	checkKey1 key.down,  .movedown			;Comprueba si se presiono la tecla abajo 
     
     ;Operadores de movimiento
-    checkKey1 key.4, .endline    
-    checkKey1 key.6, .startline
+    checkKey2 key.shiftL, key.4, .endline    
+    checkKey2 key.shiftL, key.6, .startline
     checkKey1 key.w, .endword
+
+    ;Cambiar de modo dentro del modo visual
+	checkKey2 key.shiftL, key.v, .visualLinemode	;si se presiono shift+v
+	checkKey2 key.ctrl, key.v, .visualBlockmode	;si se presiono ctrl+v
+	checkKey1 key.v, .visualmode 			;si se presiono v
 
     jmp .end2
 
@@ -63,6 +68,22 @@ mode.visual:
     ;Logica para copiar text
         call select.copy
     jmp .end
+
+	.visualmode:
+	;Logica para cambiar al modo visual con seleccion estandar
+		push dword 0
+		call select.changemode
+		jmp .end
+	.visualLinemode:
+	;Logica para cambiar al modo visual con seleccion en modo linea
+		push dword 1
+		call select.changemode
+		jmp .end
+	.visualBlockmode:
+	;Logica para cambiar al modo visual con seleccion en modo bloque
+		push dword 2
+		call select.changemode
+		jmp .end
 
     .endline:
     ;Selecciona hasta el final de la linea

@@ -583,6 +583,16 @@ select.mark:
 		mov [select.mode], eax				;copio el modo que se pasa como parametro
 	endSubR 4
 
+;Para cambiar el modo de una seleccion
+;call:
+;push dword mode (0 normal, 1 linea, 2 bloque)
+global select.changemode
+select.changemode:
+	startSubR
+		mov eax, [ebp+4]
+		mov [select.mode], eax
+	endSubR 4
+
 ;Para copiar una porcion del texto
 ;call:
 ;call select.copy
