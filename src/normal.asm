@@ -4,7 +4,7 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, isNum, getChar
 ;text externs
-extern cursor.moveH, cursor.moveV, cursor.moveline, cursor
+extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, text
 extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes, eraseline
 extern select.copy.normal, copy.line
 ;modes externs
@@ -411,6 +411,9 @@ posWords:
 ;push dword mode: ebp + 4 (0 palabra, 1 linea, 2 principio de linea, 3 final de linea)
 eraseOperator:
 	startSubR
+		mov eax, [cursor]
+		cmp byte[text+eax], ASCII.enter
+		je .end
 		mov eax, [ebp + 4]			;eax = modo
 		cmp eax, 1					;si el modo es linea
 		je .modeline
