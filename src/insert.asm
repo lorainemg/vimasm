@@ -29,7 +29,6 @@ mode.insert:
 		call getChar				;obtiene el caracter de la tecla que se presiono
 		cmp ax, 0 					;si no se presiona ninguna tecla
 		je .commad					;entonces se salta hasta el final
-
 		push eax					;se guarda el caracter en la pila como parametro de text.write
 		call text.insert				;se procede a escribir el caracter en el texto	call UpdateBuffer
 		jmp .end

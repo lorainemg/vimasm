@@ -418,32 +418,57 @@ video.UpdateSelection.block:
     cmp eax,[scroll]
     ja ._lp
     mov eax,[scroll]
-    ._lp
+    ._lp:
     sub ecx,eax					;ecx = cantidad de lineas del bloque
     inc ecx
     .lp:
+    mov esi,eax
     push eax
     push eax
     call lines.startsline
-    cmp ebx,edx
+    cmp ebx,edx                 ;veo si hay que invertir los valores para enviarselos a select.normal
     ja .invert
     add eax,edx
     push eax 
     sub eax,edx
     add eax,ebx
-    push eax
+    push eax 
     jmp .normalcall
-    .invert:
+    .invert:            ;arreglo de orden de pushs. primero end luego start
     add eax,ebx
     push eax 
     sub eax,ebx
     add eax,edx
     push eax
     .normalcall:
-
-
-
+    
+    push esi                                       ;esi tiene la linea actual
+    call lines.endline                            
+    pop  edi                                    ;edi = inicio
+    push edi                                    ;para usar registro y salvar su valor
+    cmp edi,eax                                 ;comparo el final de la linea con el inicio de la seleccion
+    jb .trycutend                              ;intento ver que pasa con el final
+    jmp .nextline                               ;salto de linea
+    .trycutend:                                 ;limito si el final de linea es menor que el final entonces el final es el final de linea
+    pop edi                                     ;edi = inicio
+    pop esi                                     ;esi = final
+    cmp esi,eax                                 
+    jae .cutend 
+    push esi
+    push edi
+    jmp .paintSelect
+    .cutend:
+    mov esi,eax
+    dec esi 
+    push esi
+    push edi
+    .paintSelect:
     call video.UpdateSelection.normal
+    jmp .endlp
+    .nextline:
+    pop eax
+    pop eax
+    .endlp:
     pop eax
     inc eax
     loop .lp
