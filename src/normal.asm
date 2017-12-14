@@ -49,11 +49,11 @@ mode.normal:
 	;Cambiar de modo:
 		checkKey1 key.i, .insertmode			;si se presiono i
 		checkKey2 key.shiftL, key.v, .visualLinemode	;si se presiono shift+v
+		checkKey2 key.ctrl, key.v, .visualBlockmode	;si se presiono ctrl+v
 		checkKey1 key.v, .visualmode 			;si se presiono v
 	
 
 	;Optativos:
-		checkKey2 key.ctrl, key.v, .visualBlockmode	;si se presiono ctrl+v
 		checkKey1 key.r, .replacemode			;si se presiono r
 
 

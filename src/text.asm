@@ -683,10 +683,46 @@ copy.line:
 	endSubR 8
 
 
+;push end ebp + 8
+;push start ebp+4
 select.copy.block:
 startSubR
+;calculo la cantidad de lineas que componen el bloque
 
-endSubR 0
+;calculo linea final
+push dword [ebp+8]
+call lines.line
+mov ecx,eax                	;calculo cual es la linea final  
+
+;calculo caracter final
+push eax 					;salvo linea final
+call lines.startsline
+mov ebx,[ebp+8]
+sub ebx,eax					;ebx = caracter final
+
+;calculo linea inicial
+push dword [ebp+4]
+call lines.line
+;push eax 					;salvo linea inicial
+sub ecx,eax					;ecx = cantidad de lineas del bloque
+
+;calculo caracter inicial
+push eax					;se consume con el llamado de abajo
+call lines.startsline		;donde empieza la inicial
+mov edx,[ebp+4]
+sub edx,eax    				;edx = comienza inicial
+
+
+
+
+
+
+
+
+
+endSubR 8
+
+
 
 ;Pega lo guardado en select.cache en el texto desde la posicion del cursor
 global select.paste
