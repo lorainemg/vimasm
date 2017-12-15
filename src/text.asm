@@ -300,8 +300,8 @@ lines.endword:
 
 
 ;Borra desde el cursor hasta el principio de su linea
-;push dword position: ebp + 4
-;call eraseline
+ ;push dword position: ebp + 4
+ ;call eraseline
 global eraseline
 eraseline:
 	startSubR
@@ -314,8 +314,8 @@ eraseline:
 	endSubR 4
 
 ;Borra en el texto a partir del cursor un numero determinado de veces
-;call:
-;push dword times: ebp + 4
+ ;call:
+ ;push dword times: ebp + 4
 global erasetimes
 erasetimes:
 	startSubR
@@ -571,8 +571,8 @@ cursor.moveline:
 	endSubR 4
 
 ;Empieza una seleccion
-;call:
-;push dword mode (0 normal, 1 linea, 2 bloque)
+	;call:
+	;push dword mode (0 normal, 1 linea, 2 bloque)
 global select.mark
 select.mark:
 	startSubR
@@ -583,8 +583,8 @@ select.mark:
 	endSubR 4
 
 ;Para copiar una porcion del texto
-;call:
-;call select.copy
+	;call:
+	;call select.copy
 global select.copy
 select.copy:
 	startSubR
@@ -617,6 +617,7 @@ select.copy:
 
 	.end:
 	endSubR 0
+
 
 ;call:
 ;push dword end: ebp + 8
@@ -686,33 +687,31 @@ copy.line:
 ;push end ebp + 8
 ;push start ebp+4
 select.copy.block:
-startSubR
-;calculo la cantidad de lineas que componen el bloque
+	startSubR
+	;calculo la cantidad de lineas que componen el bloque
 
-;calculo linea final
-push dword [ebp+8]
-call lines.line
-mov ecx,eax                	;calculo cual es la linea final  
+	;calculo linea final
+	push dword [ebp+8]
+	call lines.line
+	mov ecx,eax                	;calculo cual es la linea final  
 
-;calculo caracter final
-push eax 					;salvo linea final
-call lines.startsline
-mov ebx,[ebp+8]
-sub ebx,eax					;ebx = caracter final
+	;calculo caracter final
+	push eax 					;salvo linea final
+	call lines.startsline
+	mov ebx,[ebp+8]
+	sub ebx,eax					;ebx = caracter final
 
-;calculo linea inicial
-push dword [ebp+4]
-call lines.line
-;push eax 					;salvo linea inicial
-sub ecx,eax					;ecx = cantidad de lineas del bloque
+	;calculo linea inicial
+	push dword [ebp+4]
+	call lines.line
+	;push eax 					;salvo linea inicial
+	sub ecx,eax					;ecx = cantidad de lineas del bloque
 
-;calculo caracter inicial
-push eax					;se consume con el llamado de abajo
-call lines.startsline		;donde empieza la inicial
-mov edx,[ebp+4]
-sub edx,eax    				;edx = comienza inicial
-
-
+	;calculo caracter inicial
+	push eax					;se consume con el llamado de abajo
+	call lines.startsline		;donde empieza la inicial
+	mov edx,[ebp+4]
+	sub edx,eax    				;edx = comienza inicial
 
 
 
@@ -720,7 +719,9 @@ sub edx,eax    				;edx = comienza inicial
 
 
 
-endSubR 8
+
+
+ endSubR 8
 
 
 

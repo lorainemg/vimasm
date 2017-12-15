@@ -166,7 +166,7 @@ and %1,0x0000ffff
 
 %endif
 
-%define ASCII.enter 0x0d
+%define ASCII.enter 25
 %define ASCII.tab 0x09
 
 
