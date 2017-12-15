@@ -23,6 +23,7 @@
 %define key.point   0x34
 %define key.4       0x05
 %define key.6       0x07
+%define key.ptCom   0x27
 
 ;Teclas de letras:
 %define key.q     0x10

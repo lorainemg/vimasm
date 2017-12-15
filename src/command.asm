@@ -3,24 +3,34 @@
 
 extern getChar, checkKey1, isKey1
 extern video.Update
+extern text.find
 
 section .bss
-text resb 80
+text 	resb 80
+search 	resb 80
 
 section .data
-cursor db 0
-top db 0
+cursor 		dd 0
+top 		dd 0
 
 section .text
+global start.command
+start.command:
+    startSubR
+        inc dword[top]
+        mov byte[text], ':'
+    endSubR 0
+
+
 global mode.command
 mode.command:
     	;Veo si escribo una palabra
 		call getChar				;obtiene el caracter de la tecla que se presiono
 		cmp ax, 0 					;si no se presiona ninguna tecla
-		je .command				;entonces se salta hasta el final
+		je .command				    ;entonces se salta hasta el final
 
-		push eax					    ;se guarda el caracter en la pila como parametro de text.write
-		call text.insert			    ;se procede a escribir el caracter en el texto	call UpdateBuffer
+		push eax				    ;se guarda el caracter en la pila como parametro de text.write
+		call text.insert	        ;se procede a escribir el caracter en el texto	call UpdateBuffer
 		jmp .end
 
         .command:
@@ -32,16 +42,20 @@ mode.command:
         jmp .end2
         ;---------------------------------------------------------------------------------------------------
         .erase:
+        ;Logica para borrar
 		push dword[cursor]			;para borrar mueve el texto hacia la izq desde la posicion del cursor
 		call text.movebackward
 		jmp .end        
         .enter:
         ;Logica para presionar enter
+        call searchCmd
+		ret
+        ;Busca un comando valido, si lo es, lo ejecuta, si no emite un mensaje de comando no valido
+        ;Despues sale a modo normal
         jmp .end
         .exitmode:
-        ;Logica para salir del modo
-        jmp .end
-
+        call text.erase
+        ret
 
     .end:
     call video.Update
@@ -49,7 +63,23 @@ mode.command:
     jmp mode.command
 ret
 
+;Para borrar lo que esta guardado en el text del modo comando
+;call:
+;call text.erase
+text.erase:
+    startSubR
+        mov ecx, [top]          ;la cantidad de movimientos es la cantidad de caracteres insertados
+        mov edi, text           ;mi destino es el texto
+        mov al, 0               ;en al pongo 0
+        rep stosb               ;y repito ese movimiento las veces calculadas
+        mov dword[top], 0       ;el tope es ahora 0
+        mov dword[cursor], 0    ;y el cursor esta en la posicion 0
+    endSubR 0
 
+
+;call:
+;push dword ascii: ebp + 4
+;call text.insert
 text.insert:
 	startSubR
 		push dword[cursor]
@@ -80,7 +110,7 @@ text.moveforward:
 	    lea edi,[text+eax+1]				;voy a copiar hacia la ultima pos del texto+1
 	    lea esi,[text+eax]					;desde la ultima pos del texto
 	    rep movsb							;repito ese movimiento
-        inc byte[top]
+        inc dword[top]
 	endSubR 4
 
 
@@ -111,3 +141,24 @@ text.movebackward:
 	dec dword[top]				        	;decremento el tamano del texto
     .end:
 	endSubR 4
+
+searchCmd:
+    startSubR
+        cmp byte[text+1], '/'
+        jne .end
+        call find
+        .end:
+    endSubR 0
+
+find:
+    startSubR
+        lea esi, [text+2]
+        mov edi, search
+        mov ecx, [top]
+        sub ecx, 2
+		mov eax, ecx
+		rep movsb
+		push eax
+		push search
+		call text.find  
+    endSubR 0

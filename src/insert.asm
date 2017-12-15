@@ -14,9 +14,11 @@
 
 ;main externs
 	extern vim.update,video.Update
-	
-section .text
 
+section .data
+start dd 0
+
+section .text
 
 global mode.insert 
 mode.insert:
@@ -25,6 +27,8 @@ mode.insert:
 		checkKey2 key.ctrl, key.w, .eraseword		;Si se presiona ctrl+w
 		checkKey2 key.ctrl, key.u, .erasestartline	;Si se presiona ctrl+u
 
+		cmp dword[start], 0
+		je .end2
 	;Veo si escribo una palabra
 		call getChar				;obtiene el caracter de la tecla que se presiono
 		cmp ax, 0 					;si no se presiona ninguna tecla
@@ -106,6 +110,7 @@ mode.insert:
 
 		.exitmode:
 		;Logica para salir del modo
+			mov dword[start], 0
 			ret
 			jmp .end
 	.end:
@@ -114,6 +119,7 @@ mode.insert:
 	
 	.end2:
 	call vim.update
+	mov dword[start], 1
 	jmp mode.insert
 ret
 

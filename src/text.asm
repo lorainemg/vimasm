@@ -17,6 +17,7 @@ section .bss
 	lines.lengths 	resd 800
 
 	select.cache		resb	65535
+	search 				resd	800			;posiciones de las busquedas
 	section .data
 	global cursor
 	cursor 		dd		0			;la posicion del cursor
@@ -28,6 +29,9 @@ section .bss
 	GLOBAL lines.last
 	lines.last 	dd 		0		;la ultima linea que se ha escrito
 	moveV		dd		0		;el ultimo movimiento vertical
+	patternLen 	dd 		0		;el tamano del patron de la busqueda actual
+	global matchLen
+	matchLen	dd 		0		;la cantidad de macheos hechos en la busqueda actual 
 
 	global select.start
 	select.start dd  0
@@ -145,6 +149,19 @@ text.moveforward:
 	.end:
 	endSubR 4
 
+;push dword 
+;push dword dir word: ebp + 4
+global text.search
+text.search:
+	startSubR
+		mov esi, text
+		mov edx, [ebp+4]
+		xor eax, eax
+		.lp:	
+			lodsb
+			
+
+	endSubR 4
 
 ;call:
 	;push dword start: ebp + 4
@@ -232,6 +249,53 @@ text.movebackward:
 	.end:
 	endSubR 4
 
+
+;push dword length: ebp + 8
+;push dword dir pattern: ebp + 4
+global text.find
+text.find:
+	startSubR
+		mov esi, text						;comparo a partir del patron
+		xor eax, eax						;limpio eax
+		xor ecx, ecx  						;para indexar en el texto
+		xor edx, edx						;para indexar en el patron
+		xor edi, edi
+		cld
+		.lp:
+			lodsb							;al = caracter actual
+			cmp ecx, [text.size]			;si ya se ha llegado al final del texto
+			jae .end						;se termina
+			.wh:
+				mov ebx, [ebp+4]			;indexar patron[edx]
+				add ebx, edx
+				cmp al, [ebx]				;el texto y el patron en la posicion actual son iguales?
+				je .cont					;si son iguales, continuo
+				dec edx						;si no, decremento edx
+				cmp edx, 0					;es el indice 0?
+				ja .wh						;si es mayor que 0, entonces puedo seguir la busqueda
+			.cont:
+			mov ebx, [ebp+4]				;indexo patron[edx]
+			add ebx, edx
+			cmp al, [ebx]					;son el texto y el patron en las posiciones actuales iguales?
+			jne .last						;si no lo son, salto a la ultima comparacion
+			inc edx							;si lo son, incremento edx
+			.last:
+			inc ecx							;se incrementa las posiciones analizadas
+			cmp edx, dword[ebp+8]			;se llego al final del patron?
+			jne .lp							;si no se ha llegado, continuo el ciclo
+			;Se macheo por completo el patron:
+			mov edx, 0						;la posicion del patron se pone en 0
+			push ecx						;se guarda temporalmente la posicion actual del texto
+			sub ecx, [ebp+8]				;se le substrae a la posicion actual el tamano del patron, para guardar en donde empieza
+			mov [search+4*edi], ecx			;en la posicion del macheo se pone la posicion actual
+			pop ecx							;se recupera la posicion en la que se iba
+			inc edi							;incremento el numero de macheos hasta ahora
+			jmp .lp							;regreso hasta el principio del loop
+		.end:
+		mov eax, [ebp+8]					;eax = tamano del patron
+		mov [patternLen], eax 				;se guarda en patternLen el tamano del patron
+		mov [matchLen], edi					;guardo en matchLen la cantidad de macheos que hubo
+	endSubR 8
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHH LINE CONTROL HHHHHHHHHHHHHHHHHH
@@ -571,6 +635,20 @@ cursor.moveline:
 		mov [lines.current], eax
 	endSubR 4
 
+;Para mover el cursor en la posicion de una busqueda
+;call
+;push dword search: ebp + 4
+global cursor.search
+cursor.search:
+	startSubR
+		mov ebx, [ebp+4]				;ebx = numero de busqueda a la que se quiere acceder
+		mov eax, [search+4*ebx]			;eax = posicion de inicio de la busqueda
+		mov [cursor], eax				;muevo el cursor al inicio de la busqueda
+		push eax						;pongo la poscion como parametro
+		call lines.line					;y pregunto por la linea de esa posicion
+		mov [lines.current], eax		;la linea actual nueva es la buscada
+	endSubR 4
+
 ;Empieza una seleccion
 ;call:
 ;push dword mode (0 normal, 1 linea, 2 bloque)
@@ -732,8 +810,6 @@ sub edx,eax    				;edx = comienza inicial
 
 
 endSubR 8
-
-
 
 ;Pega lo guardado en select.cache en el texto desde la posicion del cursor
 global select.paste

@@ -4,11 +4,11 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, isNum, getChar
 ;text externs
-extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, text
+extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, cursor.search, matchLen,  text
 extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes, eraseline
-extern select.copy.normal, copy.line
+extern select.copy.normal, copy.line, 
 ;modes externs
-extern mode.insert, mode.replace, mode.visual, start.visual, select.paste
+extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command
 ;main externs
 extern vim.update, video.Update, videoflags
 
@@ -73,6 +73,7 @@ extern vim.update, video.Update, videoflags
 
 section .data
 lastkey db 0, 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
+actualSearch dd 0
 
 section .text
 
@@ -83,7 +84,6 @@ mode.normal:
 		checkKey1 key.right, .moveright			;si se presiono la tecla der 
 		checkKey1 key.up, 	 .moveup			;si se presiono la tecla arriba 
 		checkKey1 key.down,  .movedown			;si se presiono la tecla abajo 
-	
 
 	;Controles basicos
 		checkKey1 key.p, .paste					;si se presiono p
@@ -94,7 +94,7 @@ mode.normal:
 		checkKey2 key.ctrl, key.v, .visualBlockmode	;si se presiono ctrl+v
 		checkKey1 key.v, .visualmode 			;si se presiono v
 		checkKey1 key.r, .replacemode			;si se presiono r
-	
+		checkKey2 key.shiftL, key.ptCom, .commadmode	;si se presiono shift+;
 
 	;Controles optativos:
 		checkKey1 key.u, .undo					;si se presiono u
@@ -112,6 +112,10 @@ mode.normal:
     	checkKey2 key.shiftL, key.4, .endline    
     	checkKey2 key.shiftL, key.6, .startline
     	checkKey1 key.w, .endword
+
+	;Controles relacionados con el modo comando
+		checkKey2 key.shiftL, key.n, .prevsearch
+		checkKey1 key.n, .nextsearch
 
 		checknum .num
 
@@ -174,6 +178,12 @@ mode.normal:
 			clean
 			call mode.replace
 			jmp .end
+		.commadmode:
+		;Logica para cambiar al modo de comando
+			clean
+			call start.command
+			call mode.command
+			jmp .end
 
 	;Comandos especiales:
 		.paste:						
@@ -234,6 +244,27 @@ mode.normal:
 		.endword:
 		;Logica para realizar la operacion hacia el final de una palabra
 			moveEnd 0
+			jmp .end
+
+		.nextsearch:
+		;Logica para mostrar la siguiente busqueda
+			push dword[actualSearch]		;pongo mi busqueda actual como parametro
+			call cursor.search				;llamo al cursor a que se mueva a la posicion inicial de esa busqueda
+			inc dword[actualSearch]			;incremento mi busqueda actual
+			mov eax, [matchLen]
+			cmp dword[actualSearch], eax	;comparo la busqueda actual con el total de busquedas
+			jbe .end						;si la actual es menor o igual, no hago nada
+			mov dword[actualSearch], 0			;si es mayor, entonces reestablezco mi busqueda actual en 0
+			jmp .end		
+		.prevsearch:
+		;Logica para mostrar la busqueda anterior
+			push dword[actualSearch]		;pongo mi busqueda actual como parametro
+			call cursor.search				;llamo al cursor a que se mueva a la posicion inicial de esa busqueda
+			inc dword[actualSearch]			;decremento mi busqueda actual
+			cmp dword[actualSearch], 0		;comparo la busqueda actual con la primera busqueda
+			jg .end							;si es mayor que 0, entonces no hago nada
+			mov eax, [matchLen]				
+			mov [actualSearch], eax			;si es menor, entonces mi busqueda actual es la ultima busqueda
 			jmp .end
 
 		.num:
