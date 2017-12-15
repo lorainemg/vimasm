@@ -13,33 +13,52 @@ section .bss
 	;trabajo con lineas
 	global lines.starts
 	lines.starts	resd 	800							;control de lineas :  <comienzo,cantidad> en funcion de bytes del text
+	
 	global lines.lengths
-	lines.lengths 	resd 800
+	lines.lengths 	resd 	800
 
+<<<<<<< HEAD
 	select.cache		resb	65535
 	search 				resd	800			;posiciones de las busquedas
 	section .data
+=======
+	select.cache	resb	65535
+section .data
+>>>>>>> d5c5fbe218161ba8ebf01a8f84af34662b93893e
 	global cursor
-	cursor 		dd		0			;la posicion del cursor
+	cursor 			dd		0			;la posicion del cursor
 	
-	text.size dd 0
+	text.size 		dd 		0
 	global lines.current
 	lines.current	dd		0 		;la linea actual
 	
 	GLOBAL lines.last
+<<<<<<< HEAD
 	lines.last 	dd 		0		;la ultima linea que se ha escrito
 	moveV		dd		0		;el ultimo movimiento vertical
 	patternLen 	dd 		0		;el tamano del patron de la busqueda actual
 	global matchLen
 	matchLen	dd 		0		;la cantidad de macheos hechos en la busqueda actual 
+=======
+	lines.last 		dd 		0		;la ultima linea que se ha escrito
+	moveV			dd		0		;el ultimo movimiento vertical
 
+>>>>>>> d5c5fbe218161ba8ebf01a8f84af34662b93893e
+
+	;######################################################################3
+	;######################################################################3
 	global select.start
-	select.start dd  0
+	select.start 	dd  	0
 	global select.mode
-	select.mode  dd  0
-	%define select.mode.normal 0
-	%define select.mode.line 1
-	%define select.mode.block 2
+	select.mode  	dd  	0
+
+	copy.start 		dd 		0
+	copy.mode 		dd		0
+	copy.length		dd		0	
+					
+	%define select.mode.normal 	0
+	%define select.mode.line 	1
+	%define select.mode.block 	2
 section .text
 
 
@@ -53,8 +72,7 @@ text.startConfig:
 	; section .bss:
 		mov word [lines.lengths],1		;valor inicial del texto 
 		mov dword[text.size], 1
-	;	mov dword[cursor], 1
-	endSubR 0
+endSubR 0
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHH TEXT CONTROL HHHHHHHHHHHHHHHHHH
@@ -84,7 +102,7 @@ text.replace:
 		mov dword[moveV], 0		;desactualizo el valor de mover vertical
 	    inc dword [cursor]		;incremento la posicion del cursor
 
-	endSubR 4
+endSubR 4
 
 ;call:
 ;push ASCII: ebp + 4
@@ -247,7 +265,7 @@ text.movebackward:
 		stosd								;y lo vuelvo a guardar
 		loop .lp							;repito el ciclo las veces calculadas
 	.end:
-	endSubR 4
+endSubR 4
 
 
 ;push dword length: ebp + 8
@@ -301,8 +319,6 @@ text.find:
 ;HHHHHHHHHHHHHHHHH LINE CONTROL HHHHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH 
 
-
-
 ;Recibe una linea y determina en donde empieza la linea y la cantidad de caracteres
 	;call:
 	;push dword line: ebp + 4
@@ -314,9 +330,7 @@ lines.startsline:
 	mov eax,[ebp+4]
 	lea ebx,[lines.starts + 4*eax]
 	mov eax,[ebx]
-	endSubR 4
-
-
+endSubR 4
 
 ;Determina la posicion en donde se acaba una linea (solo haya ceros a la der)
 	;call:
@@ -334,7 +348,7 @@ lines.endline:
 	push dword [ebp +4]
 	call lines.startsline
 	add eax,edx
-	endSubR 4
+endSubR 4
 
 ;Determina la posicion donde se acaba la palabra sobre la cual esta el cursor
 	;call:
@@ -361,12 +375,12 @@ lines.endword:
 			jmp .lp
 		.end:
 		mov eax, ecx					;guardo para retornar la posicion del final
-	endSubR 4
+endSubR 4
 
 
 ;Borra desde el cursor hasta el principio de su linea
-;push dword position: ebp + 4
-;call eraseline
+ ;push dword position: ebp + 4
+ ;call eraseline
 global eraseline
 eraseline:
 	startSubR
@@ -376,11 +390,11 @@ eraseline:
 		sub ecx, eax					;las veces q me voy a mover: cursor-start
 		push ecx
 		call erasetimes					;llamo para borrar las veces calculadas
-	endSubR 4
+endSubR 4
 
 ;Borra en el texto a partir del cursor un numero determinado de veces
-;call:
-;push dword times: ebp + 4
+ ;call:
+ ;push dword times: ebp + 4
 global erasetimes
 erasetimes:
 	startSubR
@@ -390,7 +404,7 @@ erasetimes:
 			call text.movebackward		;elimino desde la posicion del cursor
 			loop .lp					;repito el ciclo tantas veces como las especificadas
 			.end:
-	endSubR 4
+endSubR 4
 
 ;Determina la linea que ocupa una posicion determinada
 	;call:
@@ -411,9 +425,7 @@ lines.line:
 			jae .lp							;puedo continuar mi busqueda
 		.end:
 		mov eax, edx						;guardo en ax la ultima linea que analice, que es en donde esta la posiciom
-	endSubR 4
-
-
+endSubR 4
 
 ;Crea, si es posible, la linea en una posicion determinada
 	;call: 
@@ -479,9 +491,7 @@ lines.newline:
 		;muevo el text para crear espacio al fin de linea
 		inc dword[lines.last]
 		inc dword[lines.current]
-	endSubR 0
-
-
+endSubR 0
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHH CURSOR CONTROL HHHHHHHHHHHHHHHH
@@ -505,7 +515,7 @@ cursor.canmoveV:
 		.no:						;para cuando no se pueda mover
 		xor eax, eax				;pone en eax 0
 		.end:
-	endSubR 4
+endSubR 4
 
 ;call
 ;push dword dir (1 derecha 0 -1 izquierda)
@@ -530,7 +540,7 @@ cursor.canmoveH:
 	  	.no:
 	  	xor eax, eax				;en caso de que no pueda mover el cursor, entonces pongo 0 en eax
 	  	.end:
-	endSubR 4
+endSubR 4
 
 ;call:
 ;push dword dir (1 derecha o -1 izquierda): ebp + 4
@@ -562,7 +572,7 @@ cursor.moveH:
 		.end1:
 		mov [cursor], ax			;pongo el cursor en la posicion calculada
 		.end:
-	endSubR 4
+endSubR 4
 
 ;call:
 ;push dword dir (1 abajo o -1 arriba): ebp + 4
@@ -616,12 +626,12 @@ cursor.moveV:
 		jne .end 					;si no lo esta, entonces finalizo
 		mov [moveV], bl  			;sino, cambio su valor
 		.end:
-	endSubR 4
+endSubR 4
 
 ;Para mover el cursor en el principio de una linea especifica
-;call:
-;push dword line: ebp + 4
-;call cursor.moveline
+	;call:
+	;push dword line: ebp + 4
+	;call cursor.moveline
 global cursor.moveline
 cursor.moveline:
 	startSubR
@@ -633,7 +643,15 @@ cursor.moveline:
 		mov edx, [lines.starts+4*eax]
 		mov [cursor], edx
 		mov [lines.current], eax
-	endSubR 4
+endSubR 4
+
+
+
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHH SELECT CONTROL HHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH 
+
+
 
 ;Para mover el cursor en la posicion de una busqueda
 ;call
@@ -650,8 +668,8 @@ cursor.search:
 	endSubR 4
 
 ;Empieza una seleccion
-;call:
-;push dword mode (0 normal, 1 linea, 2 bloque)
+	;call:
+	;push dword mode (0 normal, 1 linea, 2 bloque)
 global select.mark
 select.mark:
 	startSubR
@@ -672,8 +690,8 @@ select.changemode:
 	endSubR 4
 
 ;Para copiar una porcion del texto
-;call:
-;call select.copy
+	;call:
+	;call select.copy
 global select.copy
 select.copy:
 	startSubR
@@ -705,12 +723,18 @@ select.copy:
 		call select.copy					;copio en modo bloque
 
 	.end:
-	endSubR 0
+	;guardo los datos de la copia
+	mov eax,[select.start]
+	mov [copy.start],eax
+	mov eax,[select.mode]
+	mov [copy.mode],eax
+endSubR 0
 
-;call:
-;push dword end: ebp + 8
-;push dword start: ebp + 4
-;call select.copy.normals
+;copia en intervalo
+	;call:
+	;push dword end: ebp + 8
+	;push dword start: ebp + 4
+	;call select.copy.normals
 global select.copy.normal
 select.copy.normal:
 	startSubR
@@ -725,7 +749,7 @@ select.copy.normal:
 		rep movsb						;voy moviendo de un lugar a otro las veces calculadas
 		xor al,al
 		stosb							;al final de la copia pongo 
-	endSubR 8
+endSubR 8
 
 ;Guarda la copia en modo linea
 	;call:
@@ -744,7 +768,7 @@ select.copy.line:
 		push edx
 		push eax
 		call copy.line
-	endSubR 8
+endSubR 8
 
 ;call:
 ;push dword endline: ebp + 8
@@ -769,45 +793,37 @@ copy.line:
 		rep movsb						;y copio desde un lugar a otro la cantidad de veces calculada
 		xor al,al						
 		stosb							;al final de mi copia pongo 0
-	endSubR 8
+endSubR 8
 
 
 ;push end ebp + 8
 ;push start ebp+4
 select.copy.block:
-startSubR
-;calculo la cantidad de lineas que componen el bloque
+	startSubR
+	;calculo la cantidad de lineas que componen el bloque
 
-;calculo linea final
-push dword [ebp+8]
-call lines.line
-mov ecx,eax                	;calculo cual es la linea final  
+	;calculo linea final
+	push dword [ebp+8]
+	call lines.line
+	mov ecx,eax                	;calculo cual es la linea final  
 
-;calculo caracter final
-push eax 					;salvo linea final
-call lines.startsline
-mov ebx,[ebp+8]
-sub ebx,eax					;ebx = caracter final
+	;calculo caracter final
+	push eax 					;salvo linea final
+	call lines.startsline
+	mov ebx,[ebp+8]
+	sub ebx,eax					;ebx = caracter final
 
-;calculo linea inicial
-push dword [ebp+4]
-call lines.line
-;push eax 					;salvo linea inicial
-sub ecx,eax					;ecx = cantidad de lineas del bloque
+	;calculo linea inicial
+	push dword [ebp+4]
+	call lines.line
+	;push eax 					;salvo linea inicial
+	sub ecx,eax					;ecx = cantidad de lineas del bloque
 
-;calculo caracter inicial
-push eax					;se consume con el llamado de abajo
-call lines.startsline		;donde empieza la inicial
-mov edx,[ebp+4]
-sub edx,eax    				;edx = comienza inicial
-
-
-
-
-
-
-
-
+	;calculo caracter inicial
+	push eax					;se consume con el llamado de abajo
+	call lines.startsline		;donde empieza la inicial
+	mov edx,[ebp+4]
+	sub edx,eax    				;edx = comienza inicial
 
 endSubR 8
 
@@ -829,4 +845,4 @@ select.paste:
 				call lines.newline		;llamo  a crear linea
 				jmp .lp
 		.end: 
-	endSubR 0
+endSubR 0

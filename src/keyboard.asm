@@ -282,7 +282,6 @@ isControl:
  	and eax,[keyflags]
  	shr eax,3
 	jmp .end
-
 	.any:
 	xor eax,eax
 	.end:

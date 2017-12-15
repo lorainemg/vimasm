@@ -1,3 +1,4 @@
+%include "tools.mac"
 ; CMOS I/O PORTS
 %define CMOS.ADDR_PORT  0x70
 %define CMOS.DATA_PORT  0x71
@@ -30,6 +31,41 @@ tpms resd 1
 
 section .text
 
+global time.getSeconds
+time.getSeconds:
+startSubR
+ 
+ ; Zero eax for return value.
+  xor eax, eax
+
+  ; Keep track of last second value.
+  xor dl, dl
+
+  .oloop:
+    ; Wait for update not in progress.
+    .iloop:
+      mov al, 0x0A
+      out 0x70, al
+      in al, 0x71
+      test al, 0x80
+      jnz .iloop
+
+    ; Read seconds
+    xor al, al
+    ;mov al,2
+    out 0x70, al
+    in al, 0x71
+
+    ; Wait until value is the same twice in a row.
+    cmp al, dl
+    mov dl, al
+    jne .oloop
+    and eax,0x00000001
+  endSubR 0
+
+
+
+
 ; rtcs()
 ; Return the second value of the real-time-clock. Note that the value may or
 ; may not be represented such that formatting it as hex displays the correct
@@ -60,7 +96,7 @@ rtcs:
     cmp al, dl
     mov dl, al
     jne .oloop
-
+    
   ret
 
 ; tps()
@@ -243,4 +279,4 @@ delay:
     pop ebx
     mov esp, ebp
     pop ebp
-    ret
+    ret 
