@@ -23,7 +23,7 @@ global vim.start
     
     call mode.normal
   ;salida a modo normal  
-    ;call mode.normal
+   
 
 ret
 

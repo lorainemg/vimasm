@@ -100,7 +100,7 @@ icon   db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0x
 extern select.start,select.mode
 extern text
 extern cursor,lines.current,lines.lengths,lines.endline,lines.startsline,lines.endline,lines.starts,lines.line
-extern time.getSeconds
+extern time.getSeconds,interval,delay
 
 section .text
 
@@ -161,6 +161,7 @@ endSubR 4
 global video.invalidate
 video.invalidate:
     startSubR 
+    ;call delay
     call video.RCursor
     
 endSubR 0
@@ -288,11 +289,13 @@ endSubR 0
 
 video.RCursor:
     startSubR
-    ;test dword [videoflags],respawcursor
-    ;jnz .end
+    test dword [videoflags],respawcursor
+    jnz .end
+    ;cmp dword [time],0
+    ;jne .end
     ;xor dword [videoflags],hidecursor
     ;call video.Update
-    ;.end:
+    .end:
 endSubR 0
 
 
