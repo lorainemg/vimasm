@@ -6,7 +6,7 @@ extern video.Update
 extern text.find
 
 section .bss
-text 	resb 80
+ctext 	resb 80
 search 	resb 80
 
 section .data
@@ -17,8 +17,10 @@ section .text
 global start.command
 start.command:
     startSubR
-        inc dword[top]
-        mov byte[text], ':'
+		call ctext.erase
+        mov dword[top], 0
+		mov dword[cursor], 0
+        ; mov byte[text], ':'
     endSubR 0
 
 
@@ -30,7 +32,7 @@ mode.command:
 		je .command				    ;entonces se salta hasta el final
 
 		push eax				    ;se guarda el caracter en la pila como parametro de text.write
-		call text.insert	        ;se procede a escribir el caracter en el texto	call UpdateBuffer
+		call ctext.insert	        ;se procede a escribir el caracter en el texto	call UpdateBuffer
 		jmp .end
 
         .command:
@@ -44,7 +46,7 @@ mode.command:
         .erase:
         ;Logica para borrar
 		push dword[cursor]			;para borrar mueve el texto hacia la izq desde la posicion del cursor
-		call text.movebackward
+		call ctext.movebackward
 		jmp .end        
         .enter:
         ;Logica para presionar enter
@@ -54,7 +56,7 @@ mode.command:
         ;Despues sale a modo normal
         jmp .end
         .exitmode:
-        call text.erase
+        call ctext.erase
         ret
 
     .end:
@@ -65,11 +67,11 @@ ret
 
 ;Para borrar lo que esta guardado en el text del modo comando
 ;call:
-;call text.erase
-text.erase:
+;call ctext.erase
+ctext.erase:
     startSubR
         mov ecx, [top]          ;la cantidad de movimientos es la cantidad de caracteres insertados
-        mov edi, text           ;mi destino es el texto
+        mov edi, ctext           ;mi destino es el texto
         mov al, 0               ;en al pongo 0
         rep stosb               ;y repito ese movimiento las veces calculadas
         mov dword[top], 0       ;el tope es ahora 0
@@ -80,12 +82,12 @@ text.erase:
 ;call:
 ;push dword ascii: ebp + 4
 ;call text.insert
-text.insert:
+ctext.insert:
 	startSubR
 		push dword[cursor]
-		call text.moveforward
+		call ctext.moveforward
 
-		mov ebx,text  					;ebx =text
+		mov ebx,ctext  					;ebx =text
 		add ebx,[cursor]				;ebx = text + cursor
 		mov al,[ebp+4]   				;guardo 
 		mov [ebx],al					;[text + cursor] = ASCII
@@ -97,18 +99,19 @@ text.insert:
 	;call 
 	;push dword start: ebp + 4
 	;call text.move 
-text.moveforward:
+ctext.moveforward:
 	startSubR
 	    ;creo espacio en texto
         mov eax, [top]
+		mov ebx, [ebp+4]
 
 	    mov ecx, eax						;cuento cuanto me voy a mover:
 	    sub ecx,[ebp+4]						;la ultima pos del texto - la posicion actual
 	    inc ecx
 	    dec eax								;decremento eax porque es antes de la pos que me dan (antes del cursor)
 	    std
-	    lea edi,[text+eax+1]				;voy a copiar hacia la ultima pos del texto+1
-	    lea esi,[text+eax]					;desde la ultima pos del texto
+	    lea edi,[ctext+eax+1]				;voy a copiar hacia la ultima pos del texto+1
+	    lea esi,[ctext+eax]					;desde la ultima pos del texto
 	    rep movsb							;repito ese movimiento
         inc dword[top]
 	endSubR 4
@@ -117,7 +120,7 @@ text.moveforward:
 ;call:
 	;push dword start: ebp + 4
 	;call text.move
-text.movebackward:
+ctext.movebackward:
 	startSubR
 	mov eax, [ebp+4]						;eax = pos a partir de la cual voy a copiar
 	dec eax	
@@ -125,10 +128,10 @@ text.movebackward:
 	cmp eax, 0								;si estoy en el primer caracter
 	jl .end									;entonces no borro
 
-	mov dl, [text+eax]
+	mov dl, [ctext+eax]
 	push edx								;guardo el caracter que voy a borrar para analizarlo luego
-	lea edi, [text+eax]						;mi destino es la posicion actual						
-	lea esi, [text+eax+1]					;mi origen es la posicion actual mas 1
+	lea edi, [ctext+eax]						;mi destino es la posicion actual						
+	lea esi, [ctext+eax+1]					;mi origen es la posicion actual mas 1
 
 	cld								
 	mov ecx, [top]
@@ -144,20 +147,22 @@ text.movebackward:
 
 searchCmd:
     startSubR
-        cmp byte[text+1], '/'
+        cmp byte[ctext+1], '/'
         jne .end
         call find
+		
         .end:
     endSubR 0
 
 find:
     startSubR
-        lea esi, [text+2]
+        lea esi, [ctext+2]
         mov edi, search
         mov ecx, [top]
         sub ecx, 2
 		mov eax, ecx
 		rep movsb
+		
 		push eax
 		push search
 		call text.find  
