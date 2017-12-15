@@ -17,14 +17,9 @@ section .bss
 	global lines.lengths
 	lines.lengths 	resd 	800
 
-<<<<<<< HEAD
 	select.cache		resb	65535
 	search 				resd	800			;posiciones de las busquedas
 	section .data
-=======
-	select.cache	resb	65535
-section .data
->>>>>>> d5c5fbe218161ba8ebf01a8f84af34662b93893e
 	global cursor
 	cursor 			dd		0			;la posicion del cursor
 	
@@ -33,17 +28,11 @@ section .data
 	lines.current	dd		0 		;la linea actual
 	
 	GLOBAL lines.last
-<<<<<<< HEAD
 	lines.last 	dd 		0		;la ultima linea que se ha escrito
 	moveV		dd		0		;el ultimo movimiento vertical
 	patternLen 	dd 		0		;el tamano del patron de la busqueda actual
 	global matchLen
 	matchLen	dd 		0		;la cantidad de macheos hechos en la busqueda actual 
-=======
-	lines.last 		dd 		0		;la ultima linea que se ha escrito
-	moveV			dd		0		;el ultimo movimiento vertical
-
->>>>>>> d5c5fbe218161ba8ebf01a8f84af34662b93893e
 
 	;######################################################################3
 	;######################################################################3

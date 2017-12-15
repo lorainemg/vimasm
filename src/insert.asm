@@ -15,6 +15,7 @@
 ;main externs
 	extern vim.update,video.Update
 
+
 section .data
 start dd 0
 
