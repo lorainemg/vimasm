@@ -19,13 +19,14 @@ section .bss
 section .data 
     ;Formats
     format.cursor       db 0x3f
-    format.text         db BG.BRIGHT|0xf
+    format.text         db 0x8f
     format.select       db 0x9f
     format.search       db 0x00
     format.enter        db 0x82
-    format.tap          db BG.RED
+    format.tap          db 0x4f
 
     respawntimecursor   dd 1 
+    time                dd 0
 
     ;videoflags
     global videoflags
@@ -38,15 +39,15 @@ section .data
     ;video control
     scroll              dd 0      ;linea que marca el scroll
     
-    buffer.width        dd   80
-    buffer.height       dd   24 
+    buffer.width        dd 80
+    buffer.height       dd 24
     %define buffer.length       2000 
     %define buffer.textlength   0x780
     %define buffer              0xB8000
-    %define buffer.lastrow     0xb8f00
+    %define buffer.lastrow      0xb8f00
 
         ;     0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45  46  47  48
-sprite db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf, ;0
+icon   db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf, ;0
        db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0x0,0x0,0x0,0x0,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf, ;1
        db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0x0,0x0,0xa,0xa,0x0,0x0,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf, ;2
        db     0xf,0xf,0xf,0xf,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xa,0xa,0xa,0xa,0x0,0x0,0xf,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xf, ;3
@@ -99,14 +100,15 @@ sprite db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0x
 extern select.start,select.mode
 extern text
 extern cursor,lines.current,lines.lengths,lines.endline,lines.startsline,lines.endline,lines.starts,lines.line
-
+extern time.getSeconds
 
 section .text
+
 global video.paintIcon
 video.paintIcon:
-    mov esi,sprite
+    mov esi,icon
     mov edi,buffer 
-    mov ecx,24
+    mov ecx,[buffer.height]
     .rows:
     push ecx
     mov ecx,16
@@ -134,10 +136,11 @@ video.paintIcon:
     mov ah, 0xff
     mov ecx,80
     rep stosw
-    ret
+ret
 
-
-;push line
+;Retorna la cantidad de filas que ocupa una linea en la pantalla
+    ;push line
+    ;return eax = rows 
 video.rowsLine:
     startSubR
     mov eax,[ebp+4]
@@ -154,6 +157,84 @@ video.rowsLine:
     mov eax,ecx
 endSubR 4
 
+;realiza cambio pequennos y continuos en el texto 
+global video.invalidate
+video.invalidate:
+    startSubR 
+    call video.RCursor
+    
+endSubR 0
+
+;Actualiza toda la pantalla
+    ;call:
+    ;call video.Update
+global video.Update
+video.Update:
+    startSubR
+        call video.updateScroll
+        call video.UpdateText
+        mov dl, [videoflags]
+    .tryselection:
+        test dl, hideselection
+        jnz .trycursor
+        call video.UpdateSelection
+    .trycursor:
+        test dl,  hidecursor
+        jnz .trysearch
+        call video.UpdateCursor
+    .trysearch:
+ ;      test al, hidesearch
+ ;      jnz .end
+ ;      call video.UpdateSearch
+   .end:
+   call video.UpdateBuffer
+   
+endSubR 0
+
+video.UpdateBuffer:
+  startSubR
+        mov esi,buffer.textcache
+        mov edi,buffer
+        mov ecx,[buffer.height]
+        cld
+    .rows:
+        push ecx
+        mov ecx,[buffer.width]
+    .columns:
+        lodsw               ;eax = ASCII
+        cmp al,ASCII.enter  ;si es enter entonces pinto enter
+        je .paintEnter
+        cmp al,ASCII.tab   ;si es tap entonces pinto taps
+        je .paintTab
+        cmp al,0
+        je .paintEmpty
+        stosw
+        loop .columns
+    .endrow:
+        pop ecx
+        loop .rows
+        jmp .end
+    .paintEmpty:
+        mov al,'~' 
+        stosw                               ;solo pinto una
+        dec ecx
+        xor al,al
+        rep stosw                           ;termino fila
+        jmp .endrow
+    .paintEnter:
+        stosw
+        dec ecx
+        mov ah,[format.text]
+        xor al,al
+        rep stosw                           ;pintara el resto de la linea del formato 
+        jmp .endrow
+    .paintTab:
+        jmp .columns
+    .end:
+endSubR 0 
+
+;actualiza la linea scroll 
+ ;call video.updateScroll
 video.updateScroll:
     startSubR
        
@@ -192,100 +273,39 @@ video.updateScroll:
         loop .lpd
 
         .end:
-    endSubR 0
-
-
-;call:
-;call video.Update
-global video.Update
-video.Update:
-    startSubR
-        call video.updateScroll
-        
-        call video.UpdateText
-        mov dl, [videoflags]
-    
-    .tryselection:
-        test dl, hideselection
-        jnz .trycursor
-        call video.UpdateSelection
-   
-    .trycursor:
-        test dl,  hidecursor
-        jnz .trysearch
-        call video.UpdateCursor
-    .trysearch:
- ;      test al, hidesearch
- ;       jnz .end
-        ;call video.UpdateSearch
-
-    
-
-   .end:
-   call video.UpdateBuffer
-   
 endSubR 0
 
-video.UpdateBuffer:
-  startSubR
-        
-        mov esi,buffer.textcache
-        mov edi,buffer
-        mov ecx,[buffer.height]
-        cld
-    .rows:
-        push ecx
-        mov ecx,[buffer.width]
-    .columns:
-        lodsw               ;eax = ASCII
-        cmp al,ASCII.enter  ;si es enter entonces pinto enter
-        je .paintEnter
+;pinta en el pre-buffer el cursor
+video.UpdateCursor:
+    startSubR
+    push dword [scroll] 
+    call lines.startsline
+    mov edx,[cursor]
+    sub edx,eax
+    mov al,[format.cursor]
+    mov [buffer.textcache + 2*edx +1],al
+endSubR 0
 
-        cmp al,ASCII.tab   ;si es tap entonces pinto taps
-        je .paintTab
-        cmp al,0
-        je .paintEmpty
+video.RCursor:
+    startSubR
+    ;test dword [videoflags],respawcursor
+    ;jnz .end
+    ;xor dword [videoflags],hidecursor
+    ;call video.Update
+    ;.end:
+endSubR 0
 
-        stosw
-        loop .columns
 
-    .endrow:
-        pop ecx
-        loop .rows
-        jmp .end
-
-    .paintEmpty:
-        mov al,'~' 
-        stosw                               ;solo pinto una
-        dec ecx
-        xor al,al
-        rep stosw                           ;termino fila
-        jmp .endrow
-
-    .paintEnter:
-        stosw
-        dec ecx
-        mov ah,[format.text]
-        xor al,al
-        rep stosw                           ;pintara el resto de la linea del formato 
-        jmp .endrow
-    .paintTab:
-        jmp .columns
-    .end:
-    
-endSubR 0 
-
+;rasteriza el texto en el formato standart
 video.UpdateText:
     startSubR
     mov eax,[scroll]
     push eax 
     call lines.startsline
-
     lea esi,[text +eax]
     mov edi, buffer.textcache
     mov ecx, buffer.textlength
     cld
-
     .lp:
     lodsb 
     cmp al,ASCII.enter
@@ -294,62 +314,45 @@ video.UpdateText:
     jmp .stos 
     .enter:
     mov ah,[format.enter]
-
     .stos:
     stosw
     loop .lp
-    
 endSubR 0
 
-
-
- 
+;Decide el modo de pintado de selecciones y hace calculos previos  
 video.UpdateSelection:
 	startSubR
-    
 	mov eax,[select.start]
 	mov edx,[cursor]
-	
     cmp eax,edx
 	jbe .mode
-	
     push eax
     push edx
     pop eax
     pop edx 
-
-	
     .mode:
-
 	push edx
     push eax
-
-
 	cmp dword [select.mode],0
 	jne .tryline
 	call video.UpdateSelection.normal
-
     jmp .end
     .tryline:
-	
     cmp dword [select.mode],1
 	jne .tryblock
 	call video.UpdateSelection.line
     jmp .end
     .tryblock:
     call video.UpdateSelection.block
-    ;	call select.copy.block
-.end:
+    .end:
 endSubR 0
 
-;call:
-;push dword end: ebp + 8
-;push dword start: ebp + 4
+;Pintado Normal de selecciones
+    ;call:
+    ;push dword end: ebp + 8
+    ;push dword start: ebp + 4
 video.UpdateSelection.normal:
-startSubR
-
-
-
+    startSubR
     mov eax ,[scroll]
     push eax
     call lines.startsline
@@ -358,7 +361,6 @@ startSubR
     mov edx,[ebp+8]
     sub edx,eax
     mov eax,0
-    ;break
     jmp .paint
     .trydown:
 	mov edx,[ebp+8]
@@ -367,11 +369,6 @@ startSubR
     mov eax,[ebp+4]
     sub eax,ecx
     .paint:
-    
-
-
-
-    
 	;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
 	mov ecx, edx					;la cantidad de movimientos q hago:					
 	sub ecx, eax
@@ -396,12 +393,10 @@ endSubR 8
 	;push dword start ebp+4
 	;call select.line
 video.UpdateSelection.line:
-startSubR
+ startSubR
 	push dword[ebp+4]				;pongo donde empieza mi seleccion como parametro
 	call lines.line					;pregunto por la linea de mi seleccion
 	mov edx, [lines.starts+4*eax]	;busco el principio de esa linea
-
-
 	push dword[ebp+8]		        ;pongo mi linea actual como parametro
 	call lines.line                 ;busco la linea de mi final como parametro
 	push eax                        ;pongo la lina como parametro
@@ -410,36 +405,30 @@ startSubR
     push eax
     push edx 
     call video.UpdateSelection.normal
-	;Se copiaria, desde el principio de la linea de inicio hasta el final de la linea final
-    
+	;Se copiaria, desde el principio de la linea de inicio hasta el final de la linea final   
 endSubR 8
 
+;Selecciona en modo bloque
 video.UpdateSelection.block:
         startSubR
-
     ;calculo linea final
     push dword [ebp+8]
     call lines.line
     mov ecx,eax                	;calculo cual es la linea final  
-
     ;calculo caracter final
     push eax 					;salvo linea final
     call lines.startsline
     mov ebx,[ebp+8]
     sub ebx,eax					;ebx = caracter final
-
     ;calculo linea inicial
     push dword [ebp+4]
     call lines.line
     push eax 					;salvo linea inicial
-   
-    
     ;calculo caracter inicial
     push eax					;se consume con el llamado de abajo
     call lines.startsline		;donde empieza la inicial
     mov edx,[ebp+4]
     sub edx,eax    				;edx = comienza inicial
-
     pop eax
     cmp eax,[scroll]
     ja ._lp
@@ -467,7 +456,6 @@ video.UpdateSelection.block:
     add eax,edx
     push eax
     .normalcall:
-    
     push esi                                       ;esi tiene la linea actual
     call lines.endline                            
     pop  edi                                    ;edi = inicio
@@ -498,23 +486,14 @@ video.UpdateSelection.block:
     pop eax
     inc eax
     loop .lp
-    
 endSubR 8
 
+;Marca en el pre-buffer las selecciones
 video.UpdateSearch:
     startSubR
 
 endSubR 0
 
-video.UpdateCursor:
-    startSubR
-    push dword [scroll] 
-    call lines.startsline
-    mov edx,[cursor]
-    sub edx,eax
-    mov al,[format.cursor]
-    mov [buffer.textcache + 2*edx +1],al
-endSubR 0
 
 
 
