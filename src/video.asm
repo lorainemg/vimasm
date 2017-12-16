@@ -24,7 +24,9 @@ section .data
     format.search       db 0x00
     format.enter        db 0x82
     format.tap          db 0x4f
-
+    
+    format.cline        dd 0x70
+    format.ccursor      dd 0x80
     respawntimecursor   dd 1 
     time                dd 0
 
@@ -35,7 +37,7 @@ section .data
     %define hideselection   1<<1
     %define hidesearch      1<<2
     %define respawcursor    1<<3
-    
+
     ;video control
     scroll              dd 0      ;linea que marca el scroll
     
@@ -45,6 +47,16 @@ section .data
     %define buffer.textlength   0x780
     %define buffer              0xB8000
     %define buffer.lastrow      0xb8f00
+
+    ;last row control
+    mode.normal.tag  db "<NORMAL>",0
+    mode.visualnormal.tag  db "<VISUAL>",0
+    mode.visuacline.tag  db "<VISUAL LINE>",0
+    mode.visualblock.tag  db "<VISUAL BLOCK>",0
+    mode.insert.tag  db "<INSERT>",0
+    mode.replace.tag  db "<REPLACE>",0
+
+
 
         ;     0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45  46  47  48
 icon   db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf, ;0
@@ -101,7 +113,8 @@ extern select.start,select.mode
 extern text
 extern cursor,lines.current,lines.lengths,lines.endline,lines.startsline,lines.endline,lines.starts,lines.line
 extern time.getSeconds,interval,delay
-
+extern ctext,string,pattern,ccursor,top 
+extern mode.current
 section .text
 
 global video.paintIcon
@@ -173,6 +186,7 @@ global video.Update
 video.Update:
     startSubR
         call video.updateScroll
+        call video.UpdateLastRow
         call video.UpdateText
         mov dl, [videoflags]
     .tryselection:
@@ -297,7 +311,6 @@ video.RCursor:
     ;call video.Update
     .end:
 endSubR 0
-
 
 ;rasteriza el texto en el formato standart
 video.UpdateText:
@@ -490,6 +503,102 @@ video.UpdateSelection.block:
     inc eax
     loop .lp
 endSubR 8
+
+
+
+video.UpdateLastRow:
+    startSubR
+    mov eax,[buffer.height]
+    mul word[buffer.width]
+    lea edi,[buffer+2*eax]          ;esi = donde empieza la ultima fila
+
+
+     cmp  dword [mode.current],mode.fnormal 
+     je .norml
+     cmp  dword [mode.current],mode.finsert
+     je .insrt
+     cmp  dword [mode.current],mode.freplace
+     je .replc
+     cmp  dword [mode.current],mode.fvisual
+     je .visl
+     cmp  dword [mode.current],mode.fcommand 
+     je .commd 
+
+     
+     jmp .end
+    .norml:
+        mov esi,mode.normal.tag
+        jmp .end
+    .insrt:
+        mov esi,mode.insert.tag
+        jmp .end
+    .replc:
+        mov esi,mode.replace.tag
+        jmp .end
+    .visl:
+        cmp dword[select.mode],0
+        jne .visl.l
+        mov esi,mode.visualnormal.tag
+        jmp .end
+    .visl.l:
+        cmp dword [select.mode],1
+        jne .visl.b
+        mov esi,mode.visuacline.tag
+        jmp .end
+    .visl.b:
+        mov esi,mode.visualblock.tag
+        jmp .end
+    .commd:
+        call video.UpdateCommandLine
+        jmp .end2
+    .end:
+    
+    mov ecx,[buffer.width]
+    mov ah,[format.cline]
+    .paint:
+    dec ecx
+    lodsb    
+    stosw
+    cmp al,0    
+    jne .paint
+    mov al,0
+    rep stosw
+    .end2:
+endSubR 0
+
+video.UpdateCommandLine:
+startSubR
+    mov esi,ctext
+    mov eax,[buffer.height]
+    mul word[buffer.width]
+    lea edi,[buffer+2*eax] 
+    
+    mov edx,[top]
+    mov ecx,[buffer.width]
+    mov ah,[format.cline]
+    cld
+    .paint:
+    dec ecx
+    dec edx
+    lodsb    
+    stosw
+    cmp edx,0    
+    jne .paint
+    mov al,0
+    rep stosw
+
+    ;paint cursor 
+    mov eax,[buffer.height]
+    mul word[buffer.width]
+    lea edi,[buffer+2*eax]
+    add edi,[ccursor]
+    add edi,[ccursor]
+    mov esi,edi
+    lodsw
+    mov ah,[format.ccursor]
+    stosw 
+
+endSubR 0
 
 ;Marca en el pre-buffer las selecciones
 video.UpdateSearch:

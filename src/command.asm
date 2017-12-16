@@ -6,12 +6,15 @@ extern video.Update, vim.update
 extern text.find, text.size, text.substitute
 
 section .bss
+global ctext
 ctext 	resb 80
 string 	resb 80
 pattern	resb 80
 
 section .data
-cursor 		dd 0
+global ccursor
+ccursor 		dd 0
+global top
 top 		dd 0
 
 section .text
@@ -20,7 +23,7 @@ start.command:
     startSubR
 		call ctext.erase
         mov dword[top], 0
-		mov dword[cursor], 0
+		mov dword[ccursor], 0
         ; mov byte[text], ':'
     endSubR 0
 
@@ -46,18 +49,18 @@ mode.command:
 
         jmp .end2
         ;---------------------------------------------------------------------------------------------------
-		.moveright:					;mueve el cursor a la derecha
+		.moveright:					;mueve el ccursor a la derecha
 			push dword 1
-			call cursor.move		
+			call ccursor.move		
 			jmp .end
-		.moveleft:					;mueve el cursor a la izquierda
+		.moveleft:					;mueve el ccursor a la izquierda
 			push dword -1
-			call cursor.move
+			call ccursor.move
 			jmp .end
 
         .erase:
         ;Logica para borrar
-		push dword[cursor]			;para borrar mueve el texto hacia la izq desde la posicion del cursor
+		push dword[ccursor]			;para borrar mueve el texto hacia la izq desde la posicion del ccursor
 		call ctext.movebackward
 		jmp .end        
         .enter:
@@ -87,7 +90,7 @@ ctext.erase:
         mov al, 0               ;en al pongo 0
         rep stosb               ;y repito ese movimiento las veces calculadas
         mov dword[top], 0       ;el tope es ahora 0
-        mov dword[cursor], 0    ;y el cursor esta en la posicion 0
+        mov dword[ccursor], 0    ;y el ccursor esta en la posicion 0
     endSubR 0
 
 
@@ -96,18 +99,18 @@ ctext.erase:
 ;call text.insert
 ctext.insert:
 	startSubR
-		push dword[cursor]
+		push dword[ccursor]
 		call ctext.moveforward
 
 		mov ebx,ctext  					;ebx =text
-		add ebx,[cursor]				;ebx = text + cursor
+		add ebx,[ccursor]				;ebx = text + ccursor
 		mov al,[ebp+4]   				;guardo 
-		mov [ebx],al					;[text + cursor] = ASCII
+		mov [ebx],al					;[text + ccursor] = ASCII
 	    
-		mov ebx, [cursor]
+		mov ebx, [ccursor]
 		mov edx, [ctext]
-	;	breake dword[top], 4
-	    inc dword [cursor]				;incremento la posicion del cursor
+	
+	    inc dword [ccursor]				;incremento la posicion del ccursor
 	endSubR 4
 
 ;mueve todo el texto
@@ -123,7 +126,7 @@ ctext.moveforward:
 	    mov ecx, eax						;cuento cuanto me voy a mover:
 	    sub ecx,[ebp+4]						;la ultima pos del texto - la posicion actual
 	    inc ecx
-	    dec eax								;decremento eax porque es antes de la pos que me dan (antes del cursor)
+	    dec eax								;decremento eax porque es antes de la pos que me dan (antes del ccursor)
 	    std
 	    lea edi,[ctext+eax+1]				;voy a copiar hacia la ultima pos del texto+1
 	    lea esi,[ctext+eax]					;desde la ultima pos del texto
@@ -143,8 +146,8 @@ ctext.movebackward:
 	cmp eax, 0								;si estoy en el primer caracter
 	jl .end									;entonces no borro
 
-	mov dl, [ctext+eax]
-	push edx								;guardo el caracter que voy a borrar para analizarlo luego
+	;mov dl, [ctext+eax]
+	;push edx								;guardo el caracter que voy a borrar para analizarlo luego
 	lea edi, [ctext+eax]					;mi destino es la posicion actual						
 	lea esi, [ctext+eax+1]					;mi origen es la posicion actual mas 1
 
@@ -155,25 +158,25 @@ ctext.movebackward:
 	jbe .end								;entonces no borro
 	rep movsb 								;voy moviendo las palabras
 	
-	dec dword[cursor]						;decremento la posicion del cursor
+	dec dword[ccursor]						;decremento la posicion del ccursor
 	dec dword[top]				        	;decremento el tamano del texto
     .end:
 	endSubR 4
 
-;Mueve el cursor horizontalmente
+;Mueve el ccursor horizontalmente
 ;call:
 ;push dword dir (1 derecha, -1 izquierda): ebp + 4
-global cursor.move
-cursor.move:
+global ccursor.move
+ccursor.move:
 	startSubR
-		mov eax, [cursor]
+		mov eax, [ccursor]
 		add eax, [ebp+4]
 
 		cmp eax, 0
 		jl .end
 		cmp eax, [top]
 		jg .end
-		mov [cursor], eax
+		mov [ccursor], eax
 	.end:
 	endSubR 4
 
@@ -213,7 +216,7 @@ find:
 		push pattern					;pongo la direccion del patron
 		call text.find  				;llamo para buscar el patron en el texto
     endSubR 0
-
+ 
 ;Comando para reemplazar un patron en el texto
 ;call replace
 replace:

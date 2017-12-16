@@ -164,9 +164,16 @@ and %1,0x0000ffff
 	jne %1						;si no lo es, entonces es un numero
 %endmacro
 
-%endif
+
 
 %define ASCII.enter 25
 %define ASCII.tab 0x09
 
 
+%define mode.fnormal 	0x01
+%define mode.freplace 	0x02
+%define mode.finsert 	0x04
+%define mode.fvisual 	0x08
+%define mode.fcommand 	0x10
+
+%endif
