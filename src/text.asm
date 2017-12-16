@@ -23,6 +23,7 @@ section .bss
 	global cursor
 	cursor 			dd		0			;la posicion del cursor
 	
+	global text.size
 	text.size 		dd 		0
 	global lines.current
 	lines.current	dd		0 		;la linea actual
@@ -144,7 +145,7 @@ text.moveforward:
 	lea edi,[lines.starts + 4*(eax+1)]	;copio hacia la linea modificada + 1
 	lea esi,[lines.starts + 4*(eax+1)] 	;desde el mismo lugar, lo unico que voy a hacer es incrementar su valor
 	
-	mov ecx,[lines.last]			;cuento cuanto me muevo:
+	mov ecx,[lines.last]				;cuento cuanto me muevo:
 	sub ecx,eax  						;ultima linea-linea actual+1
 	inc ecx
 	cld
@@ -154,20 +155,6 @@ text.moveforward:
 		stosd							;y lo vuelvo a guardar
 		loop .lp						;repito el ciclo las veces contadas
 	.end:
-	endSubR 4
-
-;push dword 
-;push dword dir word: ebp + 4
-global text.search
-text.search:
-	startSubR
-		mov esi, text
-		mov edx, [ebp+4]
-		xor eax, eax
-		.lp:	
-			lodsb
-			
-
 	endSubR 4
 
 ;call:
@@ -200,7 +187,7 @@ text.movebackward:
 	;Actualizar las posiciones de lines.starts:
 	push dword[ebp+4]						;pongo la linea actual como parametro
 	call lines.line	
-	mov ecx, [lines.last]				;para calcular cuato me tengo que mover
+	mov ecx, [lines.last]					;para calcular cuato me tengo que mover
 	sub ecx, eax							;la ultima linea - pos
 	inc ecx
 
@@ -222,7 +209,7 @@ text.movebackward:
 	dec dword[lines.current]				;decremento mi linea actual (la linea actual es la que estoy borrando)
 	pop eax									;recupero cual era mi linea actual
 	
-	dec dword[lines.last]				;decremento el valor de la ultima linea
+	dec dword[lines.last]					;decremento el valor de la ultima linea
 	mov edx, [lines.lengths+4*eax]			;guardo la cantidad de caracteres de la linea q elimine	mov ebx, [lines.lengths]
 	dec edx									;menos 1 porque voy a quitar el caracter de linea
 	add [lines.lengths+4*(eax-1)], edx		;y a la linea anterior se le adiciona la cant de caracteres de la otra linea
@@ -257,12 +244,15 @@ text.movebackward:
 endSubR 4
 
 
+;push dword start: ebp + 16
+;push dword end: ebp + 12
 ;push dword length: ebp + 8
 ;push dword dir pattern: ebp + 4
 global text.find
 text.find:
 	startSubR
-		mov esi, text						;comparo a partir del patron
+		mov eax, [ebp + 16]
+		lea esi, [text+eax]					;comparo a partir del patron
 		xor eax, eax						;limpio eax
 		xor ecx, ecx  						;para indexar en el texto
 		xor edx, edx						;para indexar en el patron
@@ -270,16 +260,17 @@ text.find:
 		cld
 		.lp:
 			lodsb							;al = caracter actual
-			cmp ecx, [text.size]			;si ya se ha llegado al final del texto
+			cmp ecx, [ebp+12]			    ;si ya se ha llegado al final del texto
 			jae .end						;se termina
 			.wh:
-				mov ebx, [ebp+4]			;indexar patron[edx]
-				add ebx, edx
-				cmp al, [ebx]				;el texto y el patron en la posicion actual son iguales?
-				je .cont					;si son iguales, continuo
-				dec edx						;si no, decremento edx
-				cmp edx, 0					;es el indice 0?
-				ja .wh						;si es mayor que 0, entonces puedo seguir la busqueda
+        		mov ebx, [ebp+4]			;indexar patron[edx]
+        		add ebx, edx
+        		cmp al, [ebx]				;el texto y el patron en la posicion actual son iguales?
+        		je .cont					;si son iguales, continuo
+        		cmp edx, 0					;es el indice 0?
+        		jle .cont				    ;si es menor o igual que 0, entonces no puedo seguir la busqueda
+        		dec edx						;si no, decremento edx
+        		jmp .wh					    ;si es mayor que 0, entonces puedo seguir la busqueda
 			.cont:
 			mov ebx, [ebp+4]				;indexo patron[edx]
 			add ebx, edx
@@ -302,6 +293,45 @@ text.find:
 		mov eax, [ebp+8]					;eax = tamano del patron
 		mov [patternLen], eax 				;se guarda en patternLen el tamano del patron
 		mov [matchLen], edi					;guardo en matchLen la cantidad de macheos que hubo
+	endSubR 16
+
+;Para reemplazar texto
+;call:
+;push dword patternLen: ebp + 12
+;push dword pattern: ebp + 8
+;push dword string: ebp + 4
+global text.replace
+text.replace:
+	startSubR
+		mov ebx, dword[lines.current]		;copio en ebx la linea actual
+		push ebx
+		call lines.endline					
+		mov edx, eax						;edx = final de linea de la linea actual
+		mov eax, [lines.start+4*ebx]		;eax = inicio de lina linea actual
+		push eax							
+		push edx
+		push dword[ebp+12]
+		push dword[ebp+8]
+		call text.find						;busco el patron en el texto desde el inicio de la linea hasta su final
+
+		push dword 1
+		call cursor.search					;pongo el cursor en la siguiente busqueda
+
+		mov eax, [ebp+12]
+		add [cursor], eax					;ubico el cursor al final del patron
+		push dword[cursor]
+		call text.movebackward				;y llamo para borrar desde ese posicion
+
+		mov esi, [ebp+4]					;Empiezo a insertar la palabra en el texto
+		xor eax, eax
+		.lp:
+			lodsb							;al = caracter del string
+			cmp al, 0						;si al == 0
+			je .end							;entonces ya llegue al final del string
+			push eax						;pongo el caracter
+			call text.insert				;y llamo a insertar el caracter en el texto
+			jmp .lp							;repito el ciclo hasta llegar al final del string
+		.end:
 	endSubR 8
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
@@ -636,25 +666,59 @@ endSubR 4
 
 
 
-;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
-;HHHHHHHHHHHHHHHHH SELECT CONTROL HHHHHHHHHHHHHHHH
-;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH 
-
-
-
 ;Para mover el cursor en la posicion de una busqueda
 ;call
-;push dword search: ebp + 4
+;push dword dir: ebp + 4 (1 siguiente, -1 anterior con respecto a la pos de cursor)
 global cursor.search
 cursor.search:
 	startSubR
-		mov ebx, [ebp+4]				;ebx = numero de busqueda a la que se quiere acceder
-		mov eax, [search+4*ebx]			;eax = posicion de inicio de la busqueda
-		mov [cursor], eax				;muevo el cursor al inicio de la busqueda
+		cmp dword[ebp+4], 0				;se compara el parametro para ver si se quiere ir a la derecha o hacia la izq
+		jg .next						;si se quiere ir a la derecha, se mueve para la proxima busqueda
+		.prev:							;si no, se mueve hacia la busqueda anterior
+			dec dword[cursor]			;se decrementa temporalmente la pos de cursor para evitar moverse hacia la ocurrencia actual
+			mov ecx, [matchLen]
+			dec ecx						;eax sera ademas el contador de los macheos que se han visto
+			lea esi, [search+4*ecx]		;se accede al ultimo elemento de la busqueda
+			inc ecx
+			std							;se empieaza a recorrer los principios de la busqueda de atras para adelante
+			.lp1:
+				lodsd					;eax = elemento actual
+				cmp ecx, 0				;si ecx es 0, entonces se han visto todos los posibles macheos
+				je .rest				;y se mueve hasta la ultima ocurrencia 
+				dec ecx					;se decremente ecx
+				cmp eax, [cursor]		;si la pos actual es mayor que la del cursor
+				ja .lp1					;entonces no se ha encontrado la pos anterior y se continua el ciclo
+			jmp .continue				;en eax queda la pos a la que moverse, se continua para setear los valores
+			.rest:						;para reestablecer los valores:
+			mov ebx, [matchLen]
+			dec ebx
+			mov eax, [search+4*ebx]		;eax = pos del ultimo macheo
+			jmp .continue
+		.next:
+			inc dword[cursor]			;se incrementa la pos del cursor para no moverme sobre el mismo macheo
+			cld		
+			mov esi, search				;se empieza a analizar las posiciones desde el principio
+			xor ecx, ecx				;ecx sera el contador para ver si se ha llegado al fin de linea
+			.lp2:
+				lodsd					;eax = pos actual
+				cmp ecx, [matchLen]		;es ecx igual a la cantidad total de macheos?
+				je .restart				;si lo es, entonces me muevo a la pos del primer macheo
+				inc ecx					;incremento el contador
+				cmp eax, [cursor]		;si la pos actual es menor a la del cursor
+				jb .lp2					;entonces se continua el ciclo
+			jmp .continue				;se pasa para setear los valores
+		.restart:
+		mov eax, [search]				;se pone la pos como la pos del primer macheo
+		.continue:
+		mov [cursor], eax
 		push eax						;pongo la poscion como parametro
 		call lines.line					;y pregunto por la linea de esa posicion
 		mov [lines.current], eax		;la linea actual nueva es la buscada
 	endSubR 4
+
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHH SELECT CONTROL HHHHHHHHHHHHHHHH
+;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH 
 
 ;Empieza una seleccion
 	;call:

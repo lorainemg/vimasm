@@ -73,7 +73,6 @@ extern vim.update, video.Update, videoflags
 
 section .data
 lastkey db 0, 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
-actualSearch dd 0
 
 section .text
 
@@ -248,23 +247,13 @@ mode.normal:
 
 		.nextsearch:
 		;Logica para mostrar la siguiente busqueda
-			push dword[actualSearch]		;pongo mi busqueda actual como parametro
-			call cursor.search				;llamo al cursor a que se mueva a la posicion inicial de esa busqueda
-			inc dword[actualSearch]			;incremento mi busqueda actual
-			mov eax, [matchLen]
-			cmp dword[actualSearch], eax	;comparo la busqueda actual con el total de busquedas
-			jbe .end						;si la actual es menor o igual, no hago nada
-			mov dword[actualSearch], 0			;si es mayor, entonces reestablezco mi busqueda actual en 0
+			push dword 1					;le digo al cursor que se mueva a la siguiente busqueda
+			call cursor.search				;y lo llamo
 			jmp .end		
 		.prevsearch:
 		;Logica para mostrar la busqueda anterior
-			push dword[actualSearch]		;pongo mi busqueda actual como parametro
-			call cursor.search				;llamo al cursor a que se mueva a la posicion inicial de esa busqueda
-			inc dword[actualSearch]			;decremento mi busqueda actual
-			cmp dword[actualSearch], 0		;comparo la busqueda actual con la primera busqueda
-			jg .end							;si es mayor que 0, entonces no hago nada
-			mov eax, [matchLen]				
-			mov [actualSearch], eax			;si es menor, entonces mi busqueda actual es la ultima busqueda
+			push dword -1					;para que el cursor se mueva a la busqueda anterior
+			call cursor.search
 			jmp .end
 
 		.num:

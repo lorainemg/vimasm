@@ -2,12 +2,13 @@
 %include "keys.mac"
 
 extern getChar, checkKey1, isKey1
-extern video.Update
-extern text.find
+extern video.Update, vim.update
+extern text.find, text.size
 
 section .bss
 ctext 	resb 80
-search 	resb 80
+string 	resb 80
+pattern	resb 80
 
 section .data
 cursor 		dd 0
@@ -28,21 +29,32 @@ global mode.command
 mode.command:
     	;Veo si escribo una palabra
 		call getChar				;obtiene el caracter de la tecla que se presiono
-		cmp ax, 0 					;si no se presiona ninguna tecla
+		cmp eax, 0 					;si no se presiona ninguna tecla
 		je .command				    ;entonces se salta hasta el final
-
 		push eax				    ;se guarda el caracter en la pila como parametro de text.write
 		call ctext.insert	        ;se procede a escribir el caracter en el texto	call UpdateBuffer
 		jmp .end
 
         .command:
         ;Otros  comandos:
+		checkKey1 key.left,  .moveleft			;Comprueba si se presiono la tecla izq 
+		checkKey1 key.right, .moveright			;Comprueba si se presiono la tecla der 
+
         checkKey1 key.backspace, .erase
 		checkKey1 key.enter, 	 .enter 		;Comprueba si se presiono enter
 		checkKey1 key.esc,       .exitmode 	
 
         jmp .end2
         ;---------------------------------------------------------------------------------------------------
+		.moveright:					;mueve el cursor a la derecha
+			push dword 1
+			call cursor.move		
+			jmp .end
+		.moveleft:					;mueve el cursor a la izquierda
+			push dword -1
+			call cursor.move
+			jmp .end
+
         .erase:
         ;Logica para borrar
 		push dword[cursor]			;para borrar mueve el texto hacia la izq desde la posicion del cursor
@@ -50,11 +62,10 @@ mode.command:
 		jmp .end        
         .enter:
         ;Logica para presionar enter
-        call searchCmd
+        call stringCmd
 		ret
         ;Busca un comando valido, si lo es, lo ejecuta, si no emite un mensaje de comando no valido
-        ;Despues sale a modo normal
-        jmp .end
+        ;Despues sale al modo normal
         .exitmode:
         call ctext.erase
         ret
@@ -62,6 +73,7 @@ mode.command:
     .end:
     call video.Update
     .end2:
+	call vim.update
     jmp mode.command
 ret
 
@@ -92,6 +104,9 @@ ctext.insert:
 		mov al,[ebp+4]   				;guardo 
 		mov [ebx],al					;[text + cursor] = ASCII
 	    
+		mov ebx, [cursor]
+		mov edx, [ctext]
+	;	breake dword[top], 4
 	    inc dword [cursor]				;incremento la posicion del cursor
 	endSubR 4
 
@@ -130,7 +145,7 @@ ctext.movebackward:
 
 	mov dl, [ctext+eax]
 	push edx								;guardo el caracter que voy a borrar para analizarlo luego
-	lea edi, [ctext+eax]						;mi destino es la posicion actual						
+	lea edi, [ctext+eax]					;mi destino es la posicion actual						
 	lea esi, [ctext+eax+1]					;mi origen es la posicion actual mas 1
 
 	cld								
@@ -145,25 +160,117 @@ ctext.movebackward:
     .end:
 	endSubR 4
 
-searchCmd:
-    startSubR
-        cmp byte[ctext+1], '/'
-        jne .end
+;Mueve el cursor horizontalmente
+;call:
+;push dword dir (1 derecha, -1 izquierda): ebp + 4
+global cursor.move
+cursor.move:
+	startSubR
+		mov eax, [cursor]
+		add eax, [ebp+4]
+
+		cmp eax, 0
+		jl .end
+		cmp eax, [top]
+		jg .end
+		mov [cursor], eax
+	.end:
+	endSubR 4
+
+;Para buscar si lo escrito en el text es un comando valido
+;call:
+;call stringCmd
+stringCmd:
+    startSubR		
+        cmp byte[ctext+1], '/'				;si empieza por /, entonces se esta buscando texto
+        jne .n1
         call find
-		
+		.n1:
+		cmp byte[ctext+1], 's'				;si comienza por 's', entonces se intentara reemplazar
+		jne .n2
+		call replace
+		.n2:
+		cmp byte[ctext+1], '%'
+		call replaceAll
+
         .end:
     endSubR 0
 
+;Comando para buscar un patron en el texto
+;call find
 find:
     startSubR
-        lea esi, [ctext+2]
-        mov edi, search
-        mov ecx, [top]
-        sub ecx, 2
-		mov eax, ecx
-		rep movsb
+        lea esi, [ctext+2]				;comienzo desde la pos 2, para saltar ':/'
+        mov edi, pattern				;lo copio en la variable busqueda
+        mov ecx, [top]					;cuento cuanto tengo que copiar:
+        sub ecx, 2						;todo los caracteres del texto - 2, para saltar ':/'
+		mov eax, ecx					;eax = la longitud del patron
+		rep movsb						;empiezo a copiar las palabras
 		
-		push eax
-		push search
-		call text.find  
+		push dword 0
+		push dword[text.size]
+		push eax						;pongo la longitud del patron como parametro
+		push pattern					;pongo la direccion del patron
+		call text.find  				;llamo para buscar el patron en el texto
     endSubR 0
+
+;Comando para reemplazar un patron en el texto
+;call replace
+replace:
+	startSubR
+		cmp byte[ctext+2], '/'			;si lo que le sigue a ':s' no es '/', entonces no es un comando valido			
+		jne .false						;asi que salto para false
+		lea esi, [ctext+3]				;empiezo a copiar desde el 3er caracter (saltando ':s/')
+		mov edi, pattern				;hacia la variable de busqueda
+		mov ecx, 3						;la pos actual es 3
+		xor edx, edx
+		cld
+		.lp:
+			lodsb						;al = caracter del texto actual
+			cmp al, '/'					;si al = '/', entonces ya se llego al caracter final de la palabra
+			je .cont					;asi que continuo parseando la expresion
+			cmp ecx, [top]				;si la pos acutual es mayor que el tope
+			ja .false					;entonces ya llegue a la ultima pos del texto y no es un comando valido xq falta el substituto
+			inc edx
+			inc ecx						;en otro caso, incremento el contador actual
+			stosb						;guardo el caracter del texto actual en la variable de busqueda
+			jmp .lp						;repito el ciclo
+		.cont:							;Continuando copiando el string para reemplazar el patron
+		inc ecx
+		lea esi, [ctext+ecx]			;empiezo desde la pos actual + 1 a copiar el string
+		mov edi, string					;copio hacia el string
+		.lp1:
+			lodsb						;cargo: al = caracter actual del texto
+			cmp al, '/'					;si al == '/'
+			je .all						;entonces ya termine de copiar el patron, y voy a proceder a copiar todas las ocurrencias del patron
+			cmp ecx, [top]				;si la pos actual es mayor que el tope
+			ja .end						;entonces ya termine de copiar la palabra
+			inc ecx						;en otro caso incremento ecx
+			stosb						;copio el caracter para reemplazar
+			jmp .lp1					;repito el ciclo
+		.end:
+		;Llamar a buscar el texto y reemplazar la primera ocurrencia de la linea actual
+		mov dword[edi], 0
+		push edx
+		push pattern
+		push string
+		call text.replace
+		mov eax, 1
+		jmp .return
+		.all:							;Para cambiar todas las ocurrencias:
+		mov dword[edi], 0
+		inc ecx							;incremento la pos actual
+		mov al, [ctext+ecx]
+		cmp al, 'g'						;lo que hay siguiente es 'g'
+		jne .false						;si no lo es, entonces no es un comando valido
+		;Llamar a buscar en el texto y reemplazar todas las ocurrencias de la linea actual
+		.false:
+		xor eax, eax
+		.return:
+	endSubR 0
+
+;Comando para reemplazar un patron en todo el texto
+;call replaceAll
+replaceAll:
+	startSubR
+	endSubR 0
