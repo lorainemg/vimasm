@@ -4,7 +4,7 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, isNum, getChar
 ;text externs
-extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, cursor.search, matchLen,  text
+extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, cursor.search, matchLen,  text, text.deletelines
 extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes, eraseline
 extern select.copy.normal, copy.line, 
 ;modes externs
@@ -461,7 +461,7 @@ eraseOperator:
 		mov eax, [lines.starts+4*edx]	;eax = principio de la linea actual
 		push eax					;el principio de la linea es donde se va a empezar a borrar
 		push dword[ebp+8]			;la cantidad de veces es el parametro dado
-		call eraseOperator.lines	;llamo para borrar las veces calcualdas
+		call text.deletelines		;llamo para borrar las veces calcualdas
 		jmp .end
 	.modestart:						;Para modo principio de linea:
 		push dword[cursor]			;se empieza desde el principio del cursor
@@ -470,7 +470,7 @@ eraseOperator:
 	.modeend:						;Para borrar hasta el final de una linea
 		push dword[cursor]			;el principio es la posicion actual del cursor
 		push dword[ebp+8]			;la cantidad de veces es el parametro pasado
-		call eraseOperator.lines	;y se elimina desde alli hasta la ultima posicion de la ultima linea senalada
+		call text.deletelines		;y se elimina desde alli hasta la ultima posicion de la ultima linea senalada
 		.end:
 	endSubR 8
 

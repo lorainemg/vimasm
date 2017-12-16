@@ -160,7 +160,6 @@ and %1,0x0000ffff
 %macro checknum 1
 	call isNum					;comprueba si la ultima letra que se presiono es un numero
 	cmp eax, 0					;es eax = 0?
-	;break
 	jne %1						;si no lo es, entonces es un numero
 %endmacro
 

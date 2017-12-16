@@ -243,6 +243,27 @@ text.movebackward:
 	.end:
 endSubR 4
 
+;Borra lineas a partir de una posicion especifica
+;call:
+;push dword start: ebp + 8
+;push dword times: ebp + 4
+global text.deletelines
+text.deletelines:
+	startSubR
+		mov edx, [lines.current]
+		add edx, [ebp + 4]			;le adiciono a la linea actual la cantidad de lineas que voy a copiar
+		mov [lines.current], edx
+		push edx					;para acceder a la linea final
+		call lines.endline			;busco el final de esa linea
+		dec eax						;lo decremento en 1 por ser una posicion
+		mov [cursor], eax			;pongo el cursor en el final de esa linea
+		mov ecx, eax				;ecx = pos final
+		mov eax, [ebp+8]			;eax = pos inicial
+		sub ecx, eax				;ecx = pos final - pos inicial
+		inc ecx						
+		push ecx					;pongo las veces que se tiene que borrar como parametro
+		call erasetimes				;y llamo para borrar las veces contadas
+	endSubR 8
 
 ;push dword start: ebp + 16
 ;push dword end: ebp + 12
@@ -370,6 +391,33 @@ text.substitute:
 		.end:
 		pop dword[lines.current]			;recupero el valor de la inea actual
 		pop dword[cursor]					;se vuelve a poner el cursor en su lugar
+	endSubR 8
+
+;Une una cantidad especifica de lineas
+;call:
+;push dword startline: ebp + 8
+;push dword endline: ebp + 4
+global text.join
+text.join:
+	startSubR
+		mov ecx, [ebp+4]
+		.lp:
+			mov edx, [lines.starts+4*ecx]
+			mov [cursor], edx
+
+			push edx
+			call lines.line
+			mov [lines.current], eax
+
+			push dword[cursor]
+			call text.movebackward
+
+			push dword ' '
+			call text.insert
+			
+			dec ecx
+			cmp ecx, [ebp+8]
+			jg .lp
 	endSubR 8
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
