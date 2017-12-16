@@ -341,6 +341,7 @@ replace:
 ;call replaceAll
 replaceAll:
 	startSubR
+<<<<<<< HEAD
 		cmp byte[ctext+2], 's'			;si lo que le sigue a ':%' no es 's', entonces no es un comando valido			
 		jne .false						;asi que salto para false
 		cmp byte[ctext+3], '/'			;si lo que le sigue a ':/%s' no es '/', entonces no es un comando valido
@@ -457,3 +458,58 @@ match:
 		xor eax, eax				;si no macheo, en eax dejo 0
 	.end:
 	endSubR 8
+=======
+	endSubR 0
+
+
+
+%macro power 2
+	push ecx
+	push edx  
+
+	mov ecx,%2
+	mov eax,%1
+	
+	mov edx,%1
+	cmp ecx,0
+	jne %%.cal
+	mov eax,1
+	jmp %%.end
+	%%.cal:  
+	cmp ecx,1
+	je %%.end
+	mul dl
+	loop %%.cal
+
+	%%.end:
+	pop edx 
+	pop ecx 
+%endmacro
+
+
+;push dword adress
+;push dword size 
+global getNumberFromASCII
+getNumberFromASCII:
+startSubR
+mov esi,[ebp+8]
+mov ecx,[ebp+4]
+.lp:
+lodsb
+
+mov dl,al
+sub dl,'0'
+dec ecx 
+power 10,ecx 
+
+inc ecx 
+mul dl
+
+add ebx,eax
+loop .lp
+mov eax,ebx
+
+ 
+endSubR 8
+
+>>>>>>> 303620000d49c39da3640c2bb40384a8c6e3737b

@@ -76,8 +76,6 @@ lastkey db 0, 0, 0					;para llevar el control de la secuencia de teclas que se 
 global mode.current 
 mode.current dd 0 
 
-
-
 section .text
 
 global mode.normal

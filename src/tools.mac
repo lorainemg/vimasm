@@ -165,6 +165,8 @@ and %1,0x0000ffff
 
 
 
+
+
 %define ASCII.enter 25
 %define ASCII.tab 0x09
 
@@ -176,3 +178,6 @@ and %1,0x0000ffff
 %define mode.fcommand 	0x10
 
 %endif
+
+
+

@@ -12,6 +12,39 @@
     shl ax, 1
 %endmacro
 
+%macro printN 0
+
+    cmp eax,1000
+    jge %%.printValueM
+    cmp eax,100
+    jge %%.printValueC
+    cmp eax,10
+    jge %%.printValueD
+    jmp %%.printValueU
+    
+    %%.printValueM:
+    cld   
+    mov eax,edx
+    shr eax,24 
+    mov ah,[format.cline]
+    stosw
+    %%.printValueC:
+    mov eax,edx
+    shr eax,16 
+    mov ah,[format.cline] 
+    stosw 
+    %%.printValueD:
+    mov eax,edx
+    shr eax,8 
+    mov ah,[format.cline] 
+    stosw 
+    %%.printValueU:
+    mov eax,edx
+    mov ah,[format.cline]
+    stosw  
+    
+%endmacro 
+
 section .bss
     modetext resb 10
     buffer.textcache    resw 0xf00
@@ -21,12 +54,12 @@ section .data
     format.cursor       db 0x3f
     format.text         db 0x8f
     format.select       db 0x9f
-    format.search       db 0x00
+    format.search       db 0xcf
     format.enter        db 0x82
     format.tap          db 0x4f
     
     format.cline        dd 0x70
-    format.ccursor      dd 0x80
+    format.ccursor      dd 0x8f
     respawntimecursor   dd 1 
     time                dd 0
 
@@ -40,7 +73,7 @@ section .data
 
     ;video control
     scroll              dd 0      ;linea que marca el scroll
-    
+    tabsize             dd 7
     buffer.width        dd 80
     buffer.height       dd 24
     %define buffer.length       2000 
@@ -113,7 +146,9 @@ extern select.start,select.mode
 extern text
 extern cursor,lines.current,lines.lengths,lines.endline,lines.startsline,lines.endline,lines.starts,lines.line
 extern time.getSeconds,interval,delay
-extern ctext,string,pattern,ccursor,top 
+
+extern ctext,ccursor,top
+extern patternLen,search,matchLen 
 extern mode.current
 section .text
 
@@ -198,9 +233,9 @@ video.Update:
         jnz .trysearch
         call video.UpdateCursor
     .trysearch:
- ;      test al, hidesearch
- ;      jnz .end
- ;      call video.UpdateSearch
+       test al, hidesearch
+       ;jnz .end
+       call video.UpdateSearch
    .end:
    call video.UpdateBuffer
    
@@ -231,6 +266,8 @@ video.UpdateBuffer:
         jmp .end
     .paintEmpty:
         mov al,'~' 
+        and ah,0xf0
+        or ah,0x0c
         stosw                               ;solo pinto una
         dec ecx
         xor al,al
@@ -244,6 +281,31 @@ video.UpdateBuffer:
         rep stosw                           ;pintara el resto de la linea del formato 
         jmp .endrow
     .paintTab:
+        and ah,0xf0
+        or ah,0x09 
+        mov al,26
+        stosw
+        dec ecx 
+        xor edx,edx
+        mov eax,ecx        
+        mov ebx,[tabsize]
+        div bx
+        
+        mov ebx,edx
+        cmp ecx,ebx 
+        ja .ww
+        mov ecx,ebx 
+        .ww:
+        push ecx
+        mov ah,[format.text]
+        mov al,0
+        mov ecx,ebx
+        rep stosw 
+        pop ecx  
+        
+        sub ecx,ebx 
+        cmp ecx,0
+        je .endrow
         jmp .columns
     .end:
 endSubR 0 
@@ -550,9 +612,9 @@ video.UpdateLastRow:
         jmp .end
     .commd:
         call video.UpdateCommandLine
-        jmp .end2
+        jmp end2
     .end:
-    
+    cld
     mov ecx,[buffer.width]
     mov ah,[format.cline]
     .paint:
@@ -563,11 +625,82 @@ video.UpdateLastRow:
     jne .paint
     mov al,0
     rep stosw
-    .end2:
+    
+    
+    mov eax,[buffer.height]
+    mul word[buffer.width]
+    lea edi,[buffer+2*eax]          ;esi = donde empieza la ultima fila
+    add edi,140
+    
+    .printCOOR:
+
+    push dword [lines.current]
+    call getASCII
+    mov edx,eax
+    mov eax,[lines.current]  
+    printN 
+    
+    mov al,','
+    stosw
+
+    push dword [lines.current]
+    call lines.startsline
+    mov edx,[cursor]
+    sub edx,eax
+    mov eax,edx
+    push eax
+    push eax  
+    call getASCII
+    mov edx,eax
+    pop eax  
+    printN 
+     
+    end2:
 endSubR 0
 
+
+
+;push dword number
+;call getASCII ebp+4
+getASCII:
+    startSubR
+   
+
+    mov eax,[ebp+4]
+    mov ebx,1000
+    div bx
+    
+    mov cl,al       ;miles
+    add cl,'0'
+    shl ecx,8
+     
+    mov eax,[ebp+4]
+    mov ebx,100
+    div bl
+    mov ebx,10
+    xor ah,ah
+    div bl
+    mov cl,ah      ;centenas
+    add cl,'0'
+    shl ecx,16
+     
+    mov eax,[ebp+4]
+    mov ebx,10
+    div bl
+    mov cl,ah       ;el resto es las unidades 
+    add cl,'0'
+    xor ah,ah
+    div bl
+    mov ch,ah       ;decenas
+    add ch,'0' 
+    
+   
+    mov eax,ecx
+      
+endSubR 4
+
 video.UpdateCommandLine:
-startSubR
+    startSubR
     mov esi,ctext
     mov eax,[buffer.height]
     mul word[buffer.width]
@@ -602,10 +735,46 @@ endSubR 0
 
 ;Marca en el pre-buffer las selecciones
 video.UpdateSearch:
+
     startSubR
+    mov ecx,[matchLen]
+    cmp ecx,0
+    je .end 
+    inc ecx
+    mov ebx,buffer.textcache
+    mov esi,search
+    cld
 
+    push dword [scroll]
+    call lines.startsline
+    mov edx,eax
+
+    .first:
+    dec ecx 
+    stosd   
+    cmp edx,eax
+    ja .first 
+    
+    .lp:
+    push ecx 
+    lodsd 
+    sub eax,edx 
+    lea edi,[ebx + 2*eax]
+    
+    mov ecx,[patternLen]
+    .ww:
+    mov ax,[edi]
+    mov ah,[format.search]
+    stosw
+    loop .ww
+    .next:
+    pop ecx 
+    loop .lp
+
+    
+.end:
 endSubR 0
-
+; patternLen,search,matchLen
 
 
 
