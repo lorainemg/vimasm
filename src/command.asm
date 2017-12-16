@@ -3,7 +3,7 @@
 
 extern getChar, checkKey1, isKey1
 extern video.Update, vim.update
-extern text.find, text.size
+extern text.find, text.size, text.substitute
 
 section .bss
 ctext 	resb 80
@@ -251,10 +251,11 @@ replace:
 		.end:
 		;Llamar a buscar el texto y reemplazar la primera ocurrencia de la linea actual
 		mov dword[edi], 0
+		push 0
 		push edx
 		push pattern
 		push string
-		call text.replace
+		call text.substitute
 		mov eax, 1
 		jmp .return
 		.all:							;Para cambiar todas las ocurrencias:
@@ -263,7 +264,12 @@ replace:
 		mov al, [ctext+ecx]
 		cmp al, 'g'						;lo que hay siguiente es 'g'
 		jne .false						;si no lo es, entonces no es un comando valido
-		;Llamar a buscar en el texto y reemplazar todas las ocurrencias de la linea actual
+		push 1
+		push edx
+		push pattern
+		push string
+		call text.substitute
+		jmp .return
 		.false:
 		xor eax, eax
 		.return:

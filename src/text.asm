@@ -297,42 +297,56 @@ text.find:
 
 ;Para reemplazar texto
 ;call:
+;push dword times: ebp + 16	(0 se substituye una sola ocurrencia, 1 se substituyen todas)
 ;push dword patternLen: ebp + 12
 ;push dword pattern: ebp + 8
 ;push dword string: ebp + 4
-global text.replace
-text.replace:
+global text.substitute
+text.substitute:
 	startSubR
 		mov ebx, dword[lines.current]		;copio en ebx la linea actual
 		push ebx
 		call lines.endline					
 		mov edx, eax						;edx = final de linea de la linea actual
-		mov eax, [lines.start+4*ebx]		;eax = inicio de lina linea actual
+		mov eax, [lines.starts+4*ebx]		;eax = inicio de lina linea actual
 		push eax							
 		push edx
 		push dword[ebp+12]
 		push dword[ebp+8]
 		call text.find						;busco el patron en el texto desde el inicio de la linea hasta su final
 
-		push dword 1
-		call cursor.search					;pongo el cursor en la siguiente busqueda
+		cmp dword[matchLen], 0				;si no hay ningun macheo
+		je .end								;entonces no hago nada
 
-		mov eax, [ebp+12]
-		add [cursor], eax					;ubico el cursor al final del patron
-		push dword[cursor]
-		call text.movebackward				;y llamo para borrar desde ese posicion
+		cld
+		cmp dword[ebp+16], 0				;se quiere substituir una sola ocurrencia?
+		jne .all							;si no, entonces se substituyen todas
+		mov ecx, 1							;si se substituye una sola ocurrencia, entonces se pone el contador en 1
+		jmp .wh								;se salta al principio del ciclo
+		.all:								;para substituir todas las ocurrencias:
+		mov ecx, [matchLen]					;se pone el contador en el total de macheos
+		.wh:
+			mov eax, [search+4*(ecx-1)]
+			mov [cursor], eax
 
-		mov esi, [ebp+4]					;Empiezo a insertar la palabra en el texto
-		xor eax, eax
-		.lp:
-			lodsb							;al = caracter del string
-			cmp al, 0						;si al == 0
-			je .end							;entonces ya llegue al final del string
-			push eax						;pongo el caracter
-			call text.insert				;y llamo a insertar el caracter en el texto
-			jmp .lp							;repito el ciclo hasta llegar al final del string
+			mov eax, [ebp+12]
+			add [cursor], eax					;ubico el cursor al final del patron
+			push dword[ebp+12]
+			call erasetimes
+
+			mov esi, [ebp+4]					;Empiezo a insertar la palabra en el texto
+			xor eax, eax
+			.lp:
+				lodsb							;al = caracter del string
+				cmp al, 0						;si al == 0
+				je .continue							;entonces ya llegue al final del string
+				push eax						;pongo el caracter
+				call text.insert				;y llamo a insertar el caracter en el texto
+				jmp .lp							;repito el ciclo hasta llegar al final del string
+			.continue:
+			loop .wh
 		.end:
-	endSubR 8
+	endSubR 16
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHH LINE CONTROL HHHHHHHHHHHHHHHHHH
@@ -672,6 +686,8 @@ endSubR 4
 global cursor.search
 cursor.search:
 	startSubR
+		cmp dword[matchLen], 0				;si no hay ningun macheo
+		je .end							;entonces no hace nada
 		cmp dword[ebp+4], 0				;se compara el parametro para ver si se quiere ir a la derecha o hacia la izq
 		jg .next						;si se quiere ir a la derecha, se mueve para la proxima busqueda
 		.prev:							;si no, se mueve hacia la busqueda anterior
@@ -714,6 +730,7 @@ cursor.search:
 		push eax						;pongo la poscion como parametro
 		call lines.line					;y pregunto por la linea de esa posicion
 		mov [lines.current], eax		;la linea actual nueva es la buscada
+		.end:
 	endSubR 4
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
