@@ -73,11 +73,16 @@ extern vim.update, video.Update, videoflags
 
 section .data
 lastkey db 0, 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
+global mode.current 
+mode.current dd 0 
+
+
 
 section .text
 
 global mode.normal
 mode.normal:
+	mov dword[mode.current],mode.fnormal				;modo normal
 	;Controles de movimiento:
 		checkKey1 key.left,  .moveleft			;si se presiono la tecla izq 
 		checkKey1 key.right, .moveright			;si se presiono la tecla der 
@@ -148,12 +153,14 @@ mode.normal:
 	;Cambiar de modo:
 		.insertmode:
 		;Logica para cambiar al modo insertar
+			mov dword[mode.current],mode.finsert
 			clean
 			call mode.insert
 			jmp .end
 		.visualmode:
 		;Logica para cambiar al modo visual con seleccion estandar
 			clean
+			mov dword[mode.current],mode.fvisual
 			push dword 0
 			call start.visual
 			call mode.visual
@@ -161,6 +168,7 @@ mode.normal:
 		.visualLinemode:
 		;Logica para cambiar al modo visual con seleccion en modo linea
 			clean
+			mov dword[mode.current],mode.fvisual
 			push dword 1
 			call start.visual
 			call mode.visual
@@ -168,18 +176,21 @@ mode.normal:
 		.visualBlockmode:
 		;Logica para cambiar al modo visual con seleccion en modo bloque
 			clean
+			mov dword[mode.current],mode.fvisual
 			push dword 2
 			call start.visual
 			call mode.visual
 			jmp .end
 		.replacemode:
 		;Logica para cambiar al modo reemplazar
+			mov dword [mode.current],mode.freplace
 			clean
 			call mode.replace
 			jmp .end
 		.commadmode:
 		;Logica para cambiar al modo de comando
 			clean
+			mov dword[mode.current],mode.fcommand
 			call start.command
 			call mode.command
 			jmp .end
