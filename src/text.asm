@@ -255,6 +255,7 @@ text.find:
 		lea esi, [text+eax]					;comparo a partir del patron
 		xor eax, eax						;limpio eax
 		xor ecx, ecx  						;para indexar en el texto
+		mov ecx, [ebp+16]
 		xor edx, edx						;para indexar en el patron
 		xor edi, edi
 		cld
@@ -295,58 +296,81 @@ text.find:
 		mov [matchLen], edi					;guardo en matchLen la cantidad de macheos que hubo
 	endSubR 16
 
-;Para reemplazar texto
+
 ;call:
-;push dword times: ebp + 16	(0 se substituye una sola ocurrencia, 1 se substituyen todas)
-;push dword patternLen: ebp + 12
-;push dword pattern: ebp + 8
-;push dword string: ebp + 4
-global text.substitute
-text.substitute:
+;push dword mode: ebp + 12 (0 en la linea actual, 1 en todo el documento)
+;push dword patternLen: ebp + 8
+;push dword pattern: ebp + 4
+global text.findline
+text.findline:
 	startSubR
+		cmp dword[ebp + 12], 0
+		je .modeline
+		mov edx, [text.size]
+		mov eax, 0
+		jmp .find
+		.modeline:
 		mov ebx, dword[lines.current]		;copio en ebx la linea actual
 		push ebx
 		call lines.endline					
 		mov edx, eax						;edx = final de linea de la linea actual
 		mov eax, [lines.starts+4*ebx]		;eax = inicio de lina linea actual
+		.find:
 		push eax							
 		push edx
-		push dword[ebp+12]
 		push dword[ebp+8]
+		push dword[ebp+4]
 		call text.find						;busco el patron en el texto desde el inicio de la linea hasta su final
+	endSubR 12
 
+;Para reemplazar texto
+;call:
+;push dword times: ebp + 8	(0 se substituye una sola ocurrencia, 1 se substituyen todas)
+;push dword string: ebp + 4
+global text.substitute
+text.substitute:
+	startSubR
 		cmp dword[matchLen], 0				;si no hay ningun macheo
 		je .end								;entonces no hago nada
 
 		cld
-		cmp dword[ebp+16], 0				;se quiere substituir una sola ocurrencia?
+		push dword[cursor]					;se guarda el lugar del cursor
+		push dword[lines.current]			;se guarda la linea actual
+		cmp dword[ebp+8], 0					;se quiere substituir una sola ocurrencia?
 		jne .all							;si no, entonces se substituyen todas
 		mov ecx, 1							;si se substituye una sola ocurrencia, entonces se pone el contador en 1
 		jmp .wh								;se salta al principio del ciclo
 		.all:								;para substituir todas las ocurrencias:
 		mov ecx, [matchLen]					;se pone el contador en el total de macheos
 		.wh:
-			mov eax, [search+4*(ecx-1)]
-			mov [cursor], eax
+			mov eax, [search+4*(ecx-1)]		;accedo al inicio de la busqueda actual
+			mov [cursor], eax				;pongo el cursor en la pos de busqueda
 
-			mov eax, [ebp+12]
-			add [cursor], eax					;ubico el cursor al final del patron
-			push dword[ebp+12]
-			call erasetimes
+			push eax
+			call lines.line					;pregunto por la linea en la que se encuentra la busqueda
+			mov [lines.current], eax		;y cambio la linea actual para dicha linea
 
-			mov esi, [ebp+4]					;Empiezo a insertar la palabra en el texto
+			.cont:
+			mov eax, [patternLen]
+			add [cursor], eax				;ubico el cursor al final del patron
+			push dword[patternLen]
+			call erasetimes					;borro todos los caracteres del patron
+
+			mov esi, [ebp+4]				;Empiezo a insertar la palabra en el texto
 			xor eax, eax
 			.lp:
-				lodsb							;al = caracter del string
-				cmp al, 0						;si al == 0
-				je .continue							;entonces ya llegue al final del string
-				push eax						;pongo el caracter
-				call text.insert				;y llamo a insertar el caracter en el texto
-				jmp .lp							;repito el ciclo hasta llegar al final del string
+				lodsb						;al = caracter del string
+				cmp al, 0					;si al == 0
+				je .continue				;entonces ya llegue al final del string
+				push eax					;si no pongo el caracter
+				call text.insert			;y llamo a insertar el caracter en el texto
+				jmp .lp						;repito el ciclo hasta llegar al final del string
 			.continue:
-			loop .wh
+			loop .wh						;sigo con los otros macheos
 		.end:
-	endSubR 16
+		pop dword[lines.current]			;recupero el valor de la inea actual
+		pop dword[cursor]					;se vuelve a poner el cursor en su lugar
+	endSubR 8
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHH LINE CONTROL HHHHHHHHHHHHHHHHHH
