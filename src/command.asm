@@ -283,3 +283,52 @@ replace:
 replaceAll:
 	startSubR
 	endSubR 0
+
+
+
+%macro power 2
+	push ecx
+	push edx  
+
+	mov ecx,%2
+	mov eax,%1
+	mov edx,%1
+	cmp ecx,0
+	jne %%.cal
+	mov eax,1
+	jmp %%.end
+	%%.cal:  
+	cmp ecx,1
+	je %%.end
+	mul dl
+	loop %%.cal
+
+	%%.end:
+	pop edx 
+	pop ecx 
+%endmacro
+
+
+;push dword adress
+;push dword size 
+global getNumberFromASCII
+getNumberFromASCII:
+startSubR
+mov esi,[ebp+8]
+mov ecx,[ebp+4]
+inc ecx 
+.lp:
+lodsb
+mov dl,al
+sub dl,'0'
+dec ecx 
+power 10,ecx 
+inc ecx 
+mul dl
+add ebx,eax
+loop .lp
+mov eax,ebx
+
+break 
+endSubR 8
+

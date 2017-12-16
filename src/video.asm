@@ -12,6 +12,39 @@
     shl ax, 1
 %endmacro
 
+%macro printN 0
+
+    cmp eax,1000
+    jge %%.printValueM
+    cmp eax,100
+    jge %%.printValueC
+    cmp eax,10
+    jge %%.printValueD
+    jmp %%.printValueU
+    
+    %%.printValueM:
+    cld   
+    mov eax,edx
+    shr eax,24 
+    mov ah,[format.cline]
+    stosw
+    %%.printValueC:
+    mov eax,edx
+    shr eax,16 
+    mov ah,[format.cline] 
+    stosw 
+    %%.printValueD:
+    mov eax,edx
+    shr eax,8 
+    mov ah,[format.cline] 
+    stosw 
+    %%.printValueU:
+    mov eax,edx
+    mov ah,[format.cline]
+    stosw  
+    
+%endmacro 
+
 section .bss
     modetext resb 10
     buffer.textcache    resw 0xf00
@@ -233,6 +266,8 @@ video.UpdateBuffer:
         jmp .end
     .paintEmpty:
         mov al,'~' 
+        and ah,0xf0
+        or ah,0x0c
         stosw                               ;solo pinto una
         dec ecx
         xor al,al
@@ -577,9 +612,9 @@ video.UpdateLastRow:
         jmp .end
     .commd:
         call video.UpdateCommandLine
-        jmp .end2
+        jmp end2
     .end:
-    
+    cld
     mov ecx,[buffer.width]
     mov ah,[format.cline]
     .paint:
@@ -590,19 +625,80 @@ video.UpdateLastRow:
     jne .paint
     mov al,0
     rep stosw
-    .end2:
+    
+    
+    mov eax,[buffer.height]
+    mul word[buffer.width]
+    lea edi,[buffer+2*eax]          ;esi = donde empieza la ultima fila
+    add edi,140
+    
+    .printCOOR:
+
+    push dword [lines.current]
+    call getASCII
+    mov edx,eax
+    mov eax,[lines.current]  
+    printN 
+    
+    mov al,','
+    stosw
+
+    push dword [lines.current]
+    call lines.startsline
+    mov edx,[cursor]
+    sub edx,eax
+    mov eax,edx
+    push eax
+    push eax  
+    call getASCII
+    mov edx,eax
+    pop eax  
+    printN 
+     
+    end2:
 endSubR 0
+
+
 
 ;push dword number
-;call getASCII
+;call getASCII ebp+4
 getASCII:
     startSubR
-             
+   
 
+    mov eax,[ebp+4]
+    mov ebx,1000
+    div bx
+    
+    mov cl,al       ;miles
+    add cl,'0'
+    shl ecx,8
+     
+    mov eax,[ebp+4]
+    mov ebx,100
+    div bl
+    mov ebx,10
+    xor ah,ah
+    div bl
+    mov cl,ah      ;centenas
+    add cl,'0'
+    shl ecx,16
+     
+    mov eax,[ebp+4]
+    mov ebx,10
+    div bl
+    mov cl,ah       ;el resto es las unidades 
+    add cl,'0'
+    xor ah,ah
+    div bl
+    mov ch,ah       ;decenas
+    add ch,'0' 
+    
+   
+    mov eax,ecx
+      
+endSubR 4
 
-
-
-endSubR 0
 video.UpdateCommandLine:
     startSubR
     mov esi,ctext
