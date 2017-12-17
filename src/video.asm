@@ -61,7 +61,7 @@ section .data
     format.cline        dd 0x70
     format.ccursor      dd 0x8f
     respawntimecursor   dd 1 
-    time                dd 0
+    timer               dd 0,0
 
     ;videoflags
     global videoflags
@@ -148,7 +148,7 @@ icon   db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0x
 extern select.start,select.mode
 extern text
 extern cursor,lines.current,lines.lengths,lines.endline,lines.startsline,lines.endline,lines.starts,lines.line
-extern time.getSeconds,interval,delay
+extern interval,delay
 
 extern ctext,ccursor,top
 extern patternLen,search,matchLen 
@@ -212,13 +212,13 @@ endSubR 4
 global video.invalidate
 video.invalidate:
     startSubR 
-    ;call delay
-    call video.RCursor
+     
+   call video.RCursor
     
 endSubR 0
 
 ;Actualiza toda la pantalla
-    ;call:
+    ;call:time.getSeconds,
     ;call video.Update
 global video.Update
 video.Update:
@@ -226,6 +226,7 @@ video.Update:
         call video.updateScroll
         call video.UpdateLastRow
         call video.UpdateText
+      ;  call video.invalidate
         mov dl, [videoflags]
      .trysearch:
        test dl, hidesearch
@@ -369,14 +370,33 @@ video.UpdateCursor:
     mov [buffer.textcache + 2*edx +1],al
 endSubR 0
 
+global cursor.noblink
+cursor.noblink:
+startSubR
+    mov dword[timer],0
+    or byte[videoflags],respawcursor
+    and byte [videoflags],1110b
+endSubR 0
+
+
+global cursor.blink 
+cursor.blink:
+startSubR
+    and byte [videoflags],0111b
+endSubR 0
+
+
 video.RCursor:
     startSubR
     test dword [videoflags],respawcursor
     jnz .end
-    ;cmp dword [time],0
-    ;jne .end
-    ;xor dword [videoflags],hidecursor
-    ;call video.Update
+    push dword 350
+    push dword timer
+    call delay
+    cmp dword eax,0
+    je .end
+    xor byte [videoflags],1
+    call video.Update
     .end:
 endSubR 0
 
@@ -571,7 +591,6 @@ video.UpdateSelection.block:
     inc eax
     loop .lp
 endSubR 8
-
 
 
 video.UpdateLastRow:

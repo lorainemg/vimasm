@@ -10,7 +10,7 @@ extern select.copy.normal, copy.line, text.size
 ;modes externs
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command, getNumberFromASCII
 ;main externs
-extern vim.update, video.Update, videoflags
+extern vim.update, video.Update, videoflags, cursor.noblink, cursor.blink, video.invalidate
 extern undopivot,text.load ,text.save 
 
 section .bss
@@ -91,7 +91,10 @@ section .text
 
 global mode.normal
 mode.normal:
-	mov dword[mode.current],mode.fnormal				;modo normal
+		mov dword[mode.current],mode.fnormal				;modo normal
+		 
+		call cursor.blink
+
 	;Controles de movimiento:
 		checkKey1 key.left,  .moveleft			;si se presiono la tecla izq 
 		checkKey1 key.right, .moveright			;si se presiono la tecla der 
@@ -133,28 +136,34 @@ mode.normal:
 
 		checknum .num
 
-			jmp .end
+		; call video.invalidate
+
+			jmp .end2
 	;##########################################################################################################################################################
 	;##########################################################################################################################################################
 
 
 	;Comandos de movimientos:
 		.moveright:					;mueve el cursor a la derecha
+
 			clean
 			push dword 1
 			call cursor.moveH			
 			jmp .end
 		.moveleft:					;mueve el cursor a la izquierda
+		; call cursor.noblink
 			clean
 			push dword -1
 			call cursor.moveH
 			jmp .end
 		.moveup:					;mueve el cursor hacia arriba
+		; call cursor.noblink
 			clean
 			push dword -1
 			call cursor.moveV
 			jmp .end
 		.movedown:					;mueve el cursor para abajo
+		; call cursor.noblink
 			clean
 			push dword 1
 			call cursor.moveV
@@ -305,6 +314,7 @@ mode.normal:
 			jmp .end
 
 	.end:
+	call cursor.noblink
 	call video.Update						;y se actualiza el video
 	.end2:
 	call vim.update

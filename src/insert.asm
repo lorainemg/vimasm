@@ -13,7 +13,7 @@
 
 
 ;main externs
-	extern vim.update,video.Update
+	extern vim.update,video.Update,cursor.blink,cursor.noblink
 
 section .bss
 global record
@@ -38,6 +38,7 @@ mode.insert:
 
 		cmp dword[start], 0
 		je .end2
+		call cursor.blink
 	;Veo si escribo una palabra
 		call getChar				;obtiene el caracter de la tecla que se presiono
 		cmp ax, 0 					;si no se presiona ninguna tecla
@@ -138,12 +139,13 @@ mode.insert:
 		;Logica para salir del modo
 			mov dword[save], 0
 			mov dword[start], 0
-			
+
 			call text.save
 			ret
 			jmp .end
 	.end:
 	;Update
+	call cursor.noblink
 	call video.Update
 	.end2:
 	call vim.update

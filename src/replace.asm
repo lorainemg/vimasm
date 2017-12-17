@@ -11,11 +11,12 @@
 	extern text
 
 ;main externs
-	extern vim.update,video.Update
+	extern vim.update,video.Update, cursor.blink, cursor.noblink
 
 section .text
 global mode.replace 
 mode.replace:
+		call cursor.blink
 		call getChar				;obtiene el caracter de la tecla que se presiono
 		cmp ax, 0 					;si no se presiona ninguna tecla
 		je .commad					;entonces se salta hasta el final
@@ -87,6 +88,7 @@ mode.replace:
 
 	.end:
 	;Update
+   	call cursor.noblink
 	call video.Update
 	.end2:
 	call vim.update

@@ -8,7 +8,7 @@ extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy, select.chan
 ;tratamiento de lineas:
 extern lines.startsline, lines.endline, lines.endword, lines.current, block.insert, select.start, lines.line
 ;main externs
-extern vim.update, video.Update, videoflags
+extern vim.update, video.Update, videoflags, cursor.blink, cursor.noblink
 
 section .data
 mode dd 0       ;para guardar el modo de seleccion (0 normal, 1 linea, 2 bloque)
@@ -28,6 +28,7 @@ endSubR 4
 
 global mode.visual
 mode.visual:
+    call cursor.blink
     checkKey1 key.esc, .exit
     checkKey1 key.y, .copy
 
@@ -156,8 +157,8 @@ mode.visual:
     
 	.end:
 	;Update
+	call cursor.noblink
 	call video.Update
-	
     .end2:
 	call vim.update
     jmp mode.visual
