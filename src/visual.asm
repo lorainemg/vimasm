@@ -6,7 +6,7 @@ extern isKey1,isKey2,isKey3, getChar
 ;text externs
 extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy, select.changemode, save, mode.insert, select.movestart, record,count
 ;tratamiento de lineas:
-extern lines.startsline, lines.endline, lines.endword, lines.current, block.insert
+extern lines.startsline, lines.endline, lines.endword, lines.current, block.insert, select.start, lines.line
 ;main externs
 extern vim.update, video.Update, videoflags
 
@@ -120,18 +120,33 @@ mode.visual:
     ;Para entrar en la insercion en modo bloque
         cmp dword[mode], 2              ;si no se esta en modo bloque, entonces no se hace nada
         jne .end
+
        	or byte[videoflags], 1 << 1		;se activa el bit de esconder la seleccion
-        push  dword[cursor]              ;guardo la posicion del cursor, que es el final de la seleccion
+        
+        mov eax, [cursor]               
+        cmp dword[select.start], eax    ;es el principio de seleccion > a la pos del cursor?
+        jb .case1                       ;si es menor, entonces es el caso 1
+                                        ;Si es mayor:
+        push dword[select.start]        ;el final de la seleccion seria el principio
+        push dword[cursor]              ;y el inicio la pos actual del cursor
+        jmp .start                      ;los guardo en la pila y procedo a insertar texto
+        
+        .case1:                         ;si el principio de la seleccion es < que la pos del cursor:
+        push  dword[cursor]             ;guardo la posicion del cursor, que es el final de la seleccion       
+        push dword[select.start]        ;y el principio de la seleccion como principio de 
+
         call select.movestart           ;se pone el cursor en la posicion de inicio de la seleccion
+        
+        .start:
         mov byte[save], 1               ;activo la variable para empezar a grabar
         call mode.insert                ;y llamo a insertar      
-        mov dword[save], 0
+        mov dword[save], 0              ;dejo de grabar
+        
+        push dword[count]               ;guardo la longitud de la palabra que se 'grabo'
+        push record                     ;pongo la palabra
+        call block.insert               ;y llamo a insertar texto en modo bloque
       
-       ; push edx
-        push dword[count]
-        push record
-       ; break
-        call block.insert
+        mov dword[count], 0             ;regreso el tamano de la palabra en 0
         jmp .finish
     jmp .end
 

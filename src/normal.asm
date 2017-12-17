@@ -2,27 +2,41 @@
 %include "tools.mac"
 
 ;keyboad externs
-extern isKey1,isKey2,isKey3, isNum, getChar
+extern isKey1,isKey2, isNum, getChar
 ;text externs
 extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, cursor.search, matchLen,  text, text.deletelines
 extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes, eraseline
-extern select.copy.normal, copy.line, 
+extern select.copy.normal, copy.line, text.size
 ;modes externs
-extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command
+extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command, getNumberFromASCII
 ;main externs
 extern vim.update, video.Update, videoflags
 extern undopivot,text.load ,text.save 
+
+section .bss
+repit	resb 8					;se ponen los digitos que se escriben
+
+section .data
+lastkey 	db 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
+count 		dd 0					;cuenta cuantos digitos se han escrito
+
+global mode.current 
+mode.current dd 0 
+
 ;Para realizar las repeticiones de los operadores:
 ;Tine como parametros una funcion que recibe 2 parametros:primero las veces
 ;que se repite una operacion y luego el modo en que se realiza la operacion
 ;call: operator parameter, function
 %macro repetition 2
-	inRange 48, 57, byte[lastkey+1]	;hay un numero en lastkey?
-	cmp eax, 0						;el valor de la ultima tecla es un numero? 
-	je %%.start						;si no lo es, entonces simplemente hago una sola repeticion
-	xor eax, eax					;si es un numero:
-	mov al, [lastkey+1]				;al = ASCII del numero
-	sub eax, 49						;convierto el numero a entero
+	cmp dword[count], 0
+	jne %%.findnum
+	xor eax, eax
+	jmp %%.start
+	%%.findnum:
+	push repit
+	push dword[count]
+	call getNumberFromASCII			;convierto el numero a entero
+	dec eax
 	%%.start:
 		push eax					;1er parametro: cantidad de repeticiones
 		push dword %1				;2do parametro: modo de la funcion
@@ -33,7 +47,7 @@ extern undopivot,text.load ,text.save
 %macro clean 0
 	mov byte [lastkey], 0
 	mov byte [lastkey+1], 0
-	mov byte [lastkey+2], 0
+	mov dword[count], 0
 %endmacro
 
 ;Para simplificar los operadores de copiar y borrar
@@ -72,10 +86,6 @@ extern undopivot,text.load ,text.save
 	clean							;limpio lastkey
 %endmacro
 
-section .data
-lastkey db 0, 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
-global mode.current 
-mode.current dd 0 
 
 section .text
 
@@ -284,10 +294,14 @@ mode.normal:
 			je .tryop						;intento realizar una operacion
 			cmp byte[lastkey], 'd'			;si se presiono d para borrar
 			je .tryop						;intento realizar una operacion
-			mov byte[lastkey], al			;para los movimientos por el fichero
+			mov ebx, [count]
+			mov [repit+ebx], al
+			inc dword[count]			
 			jmp .end
 			.tryop:							;si no, es una operacion lo que esta en lastkey
-			mov byte[lastkey+1], al			;se deja la operacion en el primer byte, y en el segundo se pone el numero
+				mov ebx, [count]
+				mov [repit+ebx], al
+				inc dword[count]
 			jmp .end
 
 	.end:
@@ -329,12 +343,12 @@ moveStartLine:
 ;call goNumLine
 goNumLine:	
 	startSubR
-		inRange 48, 57, [lastkey]		;para moverme en una linea en especifica:
-		cmp eax, 0						;el valor de la ultima tecla es un numero? 
-		je .goEnd						;si no lo es, entonces simplemente voy al final del textos
-		xor eax, eax					
-		mov al, [lastkey]				;sino, cojo el valor de la ultima tecla y dependiendo de su valor
-		sub al, 49						;hago operaciones para convertirlo de ASCII a numero
+		cmp dword[count], 0					;para moverme en una linea en especifica:
+		je .goEnd						;si no se ha presionado un num entonces voy al final del texto
+		push repit
+		push dword[count]
+		call getNumberFromASCII
+		dec eax
 		push eax
 		call cursor.moveline			;y muevo el cursor en el principio de esa linea
 		jmp .end
@@ -438,10 +452,13 @@ posWords:
 		mov ecx, [ebp+4]
 		mov eax, [cursor]
 	.lp1:							;para copiar varias palabras calculo el total de cuanto me voy a mover:
+		cmp eax, [text.size]
+		jae .end
 		push eax					;pongo la posicion en la que estoy ahora como parametro
 		call lines.endword			;y pregunto por la posicion final de esa palabra, eax se va incrementando
 		inc eax
 		loop .lp1					;repito el ciclo las veces contadas
+	.end:
 	endSubR 4
 
 ;Operador para borrar
@@ -492,9 +509,11 @@ eraseOperator.word:
 		push ecx					;se saca la cuenta de cuantas palabras se tienen que borrar
 		call posWords				;se llama para determinar la posicion de la ultima palabra a borrar
 		dec eax						;se decrementa la ultima posicion (para no borrar el espacio)
+		
 		mov edx, [cursor]			;edx = pos del cursor
 		mov [cursor], eax			;el cursor se pone en la ultima posicion que se va a copiar
 		sub eax, edx				;cantidad de veces que se borran: ultima pos - pos del cursor anterior
+		
 		push eax					;pongo la cantidad de caracteres a borrar como parametro
 		call erasetimes				;y llamo para borrar las veces contadas
 	endSubR 4

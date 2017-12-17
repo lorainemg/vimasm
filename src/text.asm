@@ -922,6 +922,11 @@ select.copy.normal:
 	startSubR
 		mov eax,[ebp+4]					;eax = principio de la copia
 		mov edx,[ebp+8]					;edx = final de la copia
+
+		cmp edx, [text.size]
+		jbe .cont
+		mov edx, [text.size]
+		.cont:
 		;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
 		mov ecx, edx					;la cantidad de movimientos q hago:					
 		sub ecx, eax					;el final - inicio de la copia
@@ -1128,20 +1133,22 @@ select.paste:
 endSubR 0
 
 ;Inserta una palabra en cada linea de la seleccion en modo bloque
-;push dword endpos:ebp + 12
+;push dword end:ebp+16
+;push dword start: ebp + 12				;cantidad de lineas que tiene que copiar
 ;push dword lenWord:ebp + 8
 ;push dword dirWord:ebp + 4
 global block.insert
 block.insert:
-	startSubR
-		push dword[ebp+12]					;Para obtener la cantidad de lineas que tengo que copiar:
+	startSubR		
+		push dword[ebp+16]					;Para obtener la cantidad de lineas que tengo que copiar:
 		call lines.line
 		mov ecx, eax
-		push dword[select.start]
+		push dword[ebp+12]
 		call lines.line
 		sub ecx, eax 						;ecx = linea del final de la seleccion - linea del principio de la seleccion
-		mov edx, [lines.starts+4*eax]
-		mov ebx, [select.start]
+       
+	   	mov edx, [lines.starts+4*eax]
+		mov ebx, [ebp+12]
 		sub ebx, edx						;ebx = posicion a partir del principio de linea en la cual tengo que insertar la palabra
 		mov edx, eax						;edx = primera linea de seleccion
 		inc edx								;en la primera linea ya esta insertada la palabra, asi que me la salto
@@ -1168,7 +1175,7 @@ block.insert:
 			.continue:						;continuo el loop:
 			inc edx							;incremento la linea que estoy analizando
 			loop .lp						;y repito el ciclo
-	endSubR 12
+	endSubR 16
 
 
 global text.save  

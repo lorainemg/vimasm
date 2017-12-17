@@ -294,12 +294,13 @@ endSubR 4
 GLOBAL isNum
 isNum:
 	startSubR
-		mov al,[lastScan]
-		inRange 48, 57, al
-		cmp eax, 0
-		je .end
 		xor eax, eax
 		call getChar
+		mov ebx, eax
+		inRange 48, 57, bl
+		cmp eax, 0
+		je .end
+		mov eax, ebx
 		.end:
 	endSubR 0
 
