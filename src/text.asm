@@ -271,7 +271,10 @@ endSubR 4
 global text.deletelines
 text.deletelines:
 	startSubR
-		mov edx, [lines.current]
+		push dword[ebp+8]
+		call lines.line
+		mov [lines.current], eax
+		mov edx, eax
 		add edx, [ebp + 4]			;le adiciono a la linea actual la cantidad de lineas que voy a copiar
 
 		cmp edx, [lines.last]
@@ -427,6 +430,7 @@ text.substitute:
 		.end:
 		pop dword[lines.current]			;recupero el valor de la inea actual
 		pop dword[cursor]					;se vuelve a poner el cursor en su lugar
+		mov dword[matchLen], 0
 	endSubR 8
 
 ;Une una cantidad especifica de lineas
@@ -580,7 +584,7 @@ lines.newline:
 		;1-calculo diferenciales: hago espacio para annadir valores nuevos
 		
 		;muevo lengths
-		mov eax,[lines.last]			;empiezo desde la ultima linea
+		mov eax,[lines.last]				;empiezo desde la ultima linea
 		lea edi,[lines.lengths + 4*(eax+1)]	;mi destino es la linea donde estoy +1
 		lea esi,[lines.lengths + 4*eax]		;copio desde la linea actual
 		std 
@@ -624,6 +628,15 @@ lines.newline:
 		pop edx								;recupero el tamano de la otra linea
 		mov [lines.lengths +4*eax],edx 		;tamanno de la linea partida = cursor-linea +1 (mas uno lo que este se annade luego)	
 
+		;Parche!!! Para decrementar el length de la ultima linea si no es donde se creo la nueva linea
+		cmp eax, [lines.last]				;si cree la linea en la ultima linea, continuo
+		je .continue
+		
+		mov eax, [lines.last]
+		inc eax
+		dec dword[lines.lengths+4*eax]		;si no, decremento el length de lo que sera la ultima linea
+
+		.continue:
 		;ajusto inicio de la linea nueva
 		mov eax,[lines.current]
 		push eax
@@ -675,11 +688,11 @@ cursor.canmoveH:
 	  	cmp ebx, eax				;comparo donde me quiero mover con el principio de la linea 
 	    jb .no						;si la poscion a la que me voy a mover es menor, 
 									;entonces se sale de la linea actual y no me muevo
-		push dword[lines.current]	 ;pongo la linea actual como parametro
+		push dword[lines.current]	;pongo la linea actual como parametro
 		call lines.endline 			;busco el final de la linea
 	  	cmp ebx, eax				;se compara la posicion con el final de linea
 	  	jae .no						;si es mayor, entonces no hay movimiento
-	  	mov eax, 1					;por el contrario, el cursor se puede mover
+		mov eax, 1					;por el contrario, el cursor se puede mover
 	  	jmp .end 					;salta hacia el final
 	  	.no:
 	  	xor eax, eax				;en caso de que no pueda mover el cursor, entonces pongo 0 en eax
@@ -1133,13 +1146,16 @@ select.paste:
 endSubR 0
 
 ;Inserta una palabra en cada linea de la seleccion en modo bloque
-;push dword end:ebp+16
+;push dword end: ebp + 16
 ;push dword start: ebp + 12				;cantidad de lineas que tiene que copiar
 ;push dword lenWord:ebp + 8
 ;push dword dirWord:ebp + 4
 global block.insert
 block.insert:
 	startSubR		
+		cmp dword[ebp+8], 0
+		je .end
+		
 		push dword[ebp+16]					;Para obtener la cantidad de lineas que tengo que copiar:
 		call lines.line
 		mov ecx, eax
@@ -1155,6 +1171,7 @@ block.insert:
 		cld
 		.lp:								;por cada linea:
 			mov eax, [lines.lengths+4*edx]
+			dec eax
 			cmp eax, ebx					;es la longitud de mi linea actual menor que la posicion a partir de la cual voy a copiar?
 			jb .continue					;si lo es, entonces continuo, no insertando la palabra en el texto
 			;Insertando la palabra:
@@ -1175,6 +1192,7 @@ block.insert:
 			.continue:						;continuo el loop:
 			inc edx							;incremento la linea que estoy analizando
 			loop .lp						;y repito el ciclo
+		.end:
 	endSubR 16
 
 

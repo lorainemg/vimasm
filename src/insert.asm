@@ -138,6 +138,7 @@ mode.insert:
 		;Logica para salir del modo
 			mov dword[save], 0
 			mov dword[start], 0
+			
 			call text.save
 			ret
 			jmp .end

@@ -18,4 +18,5 @@ Funcionalidades implementadas:
 (0.25):las operaciones: delete, yank, join
 (0.25):buscar texto y moverse con n y N
 (0.25):deshacer una accion
-(0.25):deshacer infinito  
+(0.25):deshacer infinito
+(0.25):blinking cursor  

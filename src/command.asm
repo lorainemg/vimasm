@@ -11,18 +11,19 @@ global ctext
 ctext 	resb 80
 string 	resb 80
 pattern	resb 80
+num 	resb 40
 
 section .data
 global ccursor
 ccursor 		dd 0
 global top
-top 		dd 0
+top 			dd 0
+numLen			dd 0		;la cantidad de digitos de un numero
 
 ;Comandos a machear:
-num 			db  0
-worddelete   	db 'delete', 0
-wordyank 		db 'yank', 0
-wordjoin		db 'join', 0
+worddelete   	db 'delete ', 0
+wordyank 		db 'yank ', 0
+wordjoin		db 'join ', 0
 wordset 		db 'set ', 0
 wordhlsearch 	db 'hlsearch', 0
 wordignorecase	db 'ignorecase', 0
@@ -94,10 +95,10 @@ wordtabstop		db 'tabstop=', 0
 ;Macro para determinar si una palabra es match con otra
 ;call: ismatch match (palabra a machear), pos (la posicion desde la cual se quiere empezar a leer en el texto), label (etiqueta a la cual se salta si es match)
 %macro ismatch 3
-	push %1
+	push dword %1
 	push dword %2
 	call match					;busco si el patron machea con 'yank'
-	cmp eax, 1					;si no machea, termino
+	cmp eax, 1					;si machea, salto a la etiqueta
 	je %3
 %endmacro
 
@@ -275,41 +276,60 @@ ccursor.move:
 ;call stringCmd
 stringCmd:
     startSubR		
-		ismatch wordset, 1, .set
+		ismatch wordset, 1, .set			;intento machear un comando set
 		xor edx, edx
-		mov dl, [ctext+1]
-		cmp dl, '/'
+		mov dl, [ctext+1]					;dl = caracter despues de ':'
+		inRange 48, 57, dl					;si le sigue un numero
+		cmp eax, 1							;entonces hago las operaciones delete, yank o join a partir de una pos
+		je .operation
+		cmp dl, '/'							;si dl = '/', entonces se hace una busqueda
 		je .find
-		cmp dl, 's'
+		cmp dl, 's'							;si dl = 's', entonces se llama para reemplazar texto
 		je .replace
-		cmp dl, '%'
+		cmp dl, '%'							;si dl = '%', entonces se reemplazan las ocurrencias en todo el documento
 		je .replaceAll
-		ismatch worddelete, 1, .delete
-		ismatch wordyank, 1, .yank
-		ismatch wordjoin, 1, .join
+		ismatch worddelete, 1, .delete		;intento machear la palabra 'delete '
+		ismatch wordyank, 1, .yank			;intento machear la palabra 'yank '
+		ismatch wordjoin, 1, .join			;intento machear la palabra 'join '
+
+		jmp .end
 
 		.find:
+		;Para buscar un patron en el texto
         call find
 		jmp .end
 		.replace:
+		;Para reemplazar un patron en la linea actual
 		call replace
 		jmp .end
 		.replaceAll:
+		;Para reemplazar un patron en todo el texto
 		call replaceAll
 		jmp .end
 		.delete:		
+		;Para eliminar una cantidad especifica de lineas en todo el texto a partir de la linea actual
+		push dword 8
 		push dword[lines.current]
 		call delete
 		jmp .end
 		.yank:
+		;Para copiar una cantidad especifica de lineas a partir de la linea actual 
+		push dword 6
 		push dword[lines.current]
 		call yank
 		jmp .end
 		.join:
+		;Para juntar una cantidad especifica de lineas a partir de la linea actual
+		push dword 6
 		push dword[lines.current]
 		call join
 		jmp .end
+		.operation:
+		;Para realizar las operaciones de delete, yank o join a partir de una linea especifica
+		call initOp
+		jmp .end
 		.set:
+		;Para setear preferencias
 		call set
 		jmp .end
         .end:
@@ -373,96 +393,132 @@ replaceAll:
 
 ;Comando para eliminar a partir de una linea 
 ;call:
-;push dword start: ebp + 4
+;push dword pos: ebp + 8	(posicion a partir del texto del cual se va a empezar a parsear el numero)
+;push dword start: ebp + 4	(linea a partir del cual se va eliminar)
 delete:
 	startSubR
-		mov eax, 7					;me ubico en el texto despues de 'delete'
-		cmp byte[ctext+eax], ' ' 	;si en el texto no hay un espacio
-		jne .end					;termino xq no es un comando valido
-		inc eax
-		push eax
-		call getNum
-		mov edx, eax
-		dec edx
+		push dword[ebp+8]
+		call getNum					;llamo para obtener un numero despues de la posicion 8 en el texto
+		mov edx, eax				;edx = cantidad de lineas que se quieren eliminar
+		dec edx						
 		mov ebx, [ebp+4]
-		mov eax, [lines.starts+4*ebx]
+		mov eax, [lines.starts+4*ebx]	;eax = inicio de la linea a partir de la cual quiero eliminar
 		push eax
 		push edx
-		call text.deletelines
+		call text.deletelines		;elimino desde la pos inicial la cantidad de lineas determinada
 		.end:
-	endSubR 4
+	endSubR 8
 
 ;Comando para copiar a partir de una linea
 ;call:
-;push dword start: ebp + 4
+;push dword pos: ebp + 8	(posicion a partir del texto del cual se va a empezar a parsear el numero)
+;push dword start: ebp + 4	(linea a partir del cual se va eliminar)
 yank:
 	startSubR
-		mov eax, 5					;me ubico en el texto despues de 'yank'
-		cmp byte[ctext+eax], ' ' 	;si en el texto no hay un espacio
-		jne .end					;termino xq no es un comando valido
-		inc eax
-		push eax
-		call getNum
-		mov edx, eax
+		push dword[ebp+8]
+		call getNum					;busco un numero despues de la posicion 6
+		mov edx, eax				;edx = cantidad de lineas a copiar
 		dec edx
 		;Llamando a copiar lineas:
-		add edx, [ebp+4]
+		add edx, [ebp+4]			;edx = linea final a copiar
 		push edx
 		push dword[ebp+4]
-		call copy.line
+		call copy.line				;llamo a copiar desde la linea inicial hasta la final
 		.end:
-	endSubR 4
+	endSubR 8
 
-;Comando para pegar dos lineas
+;Comando para juntar dos lineas
 ;call:
-;push dword start: ebp + 4
+;push dword pos: ebp + 8	(posicion a partir del texto del cual se va a empezar a parsear el numero)
+;push dword start: ebp + 4	(linea a partir del cual se va eliminar)
 join:
 	startSubR
-		mov eax, 5					;me ubico en el texto despues de 'join'
-		cmp byte[ctext+eax], ' ' 	;si en el texto no hay un espacio
-		jne .end					;termino xq no es un comando valido
-		inc eax
-		push eax
-		call getNum
+		push dword[ebp+8]					
+		call getNum					;obtengo un numero desde la pos del texto para obtener la cantidad de lineas que tengo que juntar
 		mov edx, eax
 		;Llamando a copiar lineas:
-		add edx, [ebp+4]
+		add edx, [ebp+4]			;edx = ultima linea que tengo que juntar
 		push dword[ebp+4]
 		push edx
-		call text.join
+		call text.join	
+	endSubR 8
+
+;Para obtener el inicio de las operaciones delete, join y yank
+initOp:
+	startSubR
+		push dword 1
+		call getNum							;llamo para obtener un numero a partir de la pos 1
+		dec eax
+		push eax							;guardo el numero en pila
+
+		mov edx, [numLen]
+		cmp byte[ctext+edx], ' ' 			;es lo que le sigue al numero un espacio?
+		jne .end							;si no lo es, entonces no es un comando valido, asi que termino
+
+		inc edx					
+		ismatch worddelete, edx, .delete	;intento machear la palabra 'delete '
+		ismatch wordyank, edx, .yank		;intento machear la palabra 'yank '
+	;	ismatch wordjoin, edx, .join		;intento machear la palabra 'join '
+
+		jmp .end
+		.delete:
+		;Elimina a partir de una pos en especifica (la pos ya esta en la pila)
+			pop eax							;recupero el numero
+			add edx, 7 						;a la pos donde termino el numero le sum el len de 'delete '
+			push edx						;parseo el resto de la expresion a partir de la pos
+			push eax						;y pongo la linea a partir de la cual se empieza a eliminar
+			call delete						;y llamo a eliminar	
+			jmp .end2
+		.yank:
+		;Copia a partir de una pos en especifica
+			pop eax
+			add edx, 5
+			push edx
+			push eax
+			call yank
+			jmp .end2
+		.join:
+		;Junta una cantidad especifica de linea a partir de una pos
+			pop eax
+			add edx, 5
+			push edx
+			push eax
+			call join
+			jmp .end2
 		.end:
-	endSubR 4
+			pop eax
+		.end2:
+	endSubR 0
 
 ;call:
 ;push dword start: ebp + 4 (comienzo con respecto a ctext donde se quiere empezar a obtener el numero)
 getNum:
 	startSubR
-		mov eax, [ebp+4]
-		lea esi, [ctext+eax]
-		mov edi, num
-		mov ecx, eax
+		mov eax, [ebp+4]			
+		lea esi, [ctext+eax]		;copio desde el texto a partir del principio dado
+		mov edi, num				;hacia la variable num
+		mov ecx, eax				;el contador empieza a partir de la posicion de inicio
 		xor eax, eax
 		cld
 		.lp:
-			lodsb
-			mov edx, eax
-			inc ecx
-			inRange 48, 57, dl
-			cmp eax, 0
-			je .end
-			mov eax, edx
-			cmp ecx, [top]
-			jge .end
-			stosb
-			jmp .lp
+			lodsb					;al = caracter actual
+			mov edx, eax			;edx = caracter actual (inRange no funciona con eax)
+			inc ecx	
+			inRange 48, 57, dl		;pregunto si el caracter es un numero
+			cmp eax, 0				;si no es un numero
+			je .end					;entonces termino la ejecucion
+			mov eax, edx			;eax = caracter numerico actual
+			cmp ecx, [top]			;si ya llegue a mi tope
+			jge .end				;entonces igualmente termino la ejecucion
+			stosb					;pongo en num el numero actual
+			jmp .lp					;repito el ciclo
 		.end:
-		dec ecx
-		sub ecx, [ebp+4]
-		xor eax, eax
-		mov al, [num]
-		push num
-		push ecx
-		call getNumberFromASCII
+		dec ecx						;resto ecx menos el principio menos 1 porque incrementa 1 vez de mas
+		mov [numLen], ecx
+		sub ecx, [ebp+4]			;para obtener en ecx la cantidad de digitos del numero
+		push num					;pongo el numero escrito con caracteres como parametro
+		push ecx					;pongo la cantidad de digitos
+		call getNumberFromASCII		;y obtengo en eax el numero a partir de dicho string
 	endSubR 4
 
 ;Para ver si un comando machea con una palabra a partir de una posicion
@@ -471,7 +527,7 @@ getNum:
 ;push dword start: ebp + 4
 match:
 	startSubR
-		mov eax, [ebp+4]		
+		mov eax, [ebp+4]
 		lea esi, [ctext+eax]		;empiezo a copiar desde el inicio del texto
 		xor ecx, ecx				;ecx = contador para ver en que posicion esta
 		xor edx, edx				;edx = estara ubicado la direccion de caracter actual a analizar
@@ -491,7 +547,7 @@ match:
 		mov eax, 1					;si se macheo dejo en eax true
 		jmp .end					;y termino
 		.false:
-		xor eax, eax				;si no macheo, en eax dejo 0
+			xor eax, eax				;si no macheo, en eax dejo 0
 	.end:
 	endSubR 8
 
@@ -499,20 +555,21 @@ match:
 ;Para parsear una expresion con set
 set:
 	startSubR
-		ismatch wordhlsearch, 5, .hlsearch
-		ismatch wordignorecase, 5, .igncase
-		ismatch wordruler, 5, .ruler
-		ismatch wordtabstop, 5, .tabs
+		ismatch wordhlsearch, 5, .hlsearch	;busco si a partir de la pos 5 del txt machea 'hlsearch ', y si lo hace salto para la etiqueta
+		ismatch wordignorecase, 5, .igncase	;busco si a partir de la pos 5 del txt machea 'ignorecase '
+		ismatch wordruler, 5, .ruler		;busco si a partir de la pos 5 del txt machea 'ruler '
+		ismatch wordtabstop, 5, .tabs		;busco si a partir de la pos 5 del txt machea 'tabstop '
 
-		ismatch wordno, 5, .no
+		ismatch wordno, 5, .no				;busco si a partir de la pos 5 del txt machea 'no '
 		jmp .end
 
 		.hlsearch:
-		;Activar el hightlight search
-			and byte[videoflags], ~1<<2
+		;Desactivo el bit de esconder la busqueda
+			and byte[videoflags], ~1<<2	
+			or byte[videoflags], 1<<1
 			jmp .end
 		.igncase:
-		;Ignorar las mayusculas en el macheo del patron
+		;Activo la ignoracion de las mayusculas en el macheo del patron
 			mov byte[ignoreCase], 1
 			jmp .end
 		.ruler:
@@ -520,21 +577,22 @@ set:
 			mov	byte[showpos], 1
 			jmp .end
 		.tabs:
-		;Cambiar el tamano de los tabs 13 pos
+		;Cambiar el tamano de los tabs
 			mov eax, 13
 			push eax
-			call getNum
-			mov [tabsize], eax
+			call getNum						;A partir de la pos 13 intento obtener un numero
+			mov [tabsize], eax				;y cambio el tamano de los tab por el especificado
 			jmp .end
 		
 		.no:
-			ismatch wordhlsearch, 8, .nohlsearch
-			ismatch wordignorecase, 8, .nocase
-			ismatch wordruler, 8, .noruler
+		;Para desactivar los comandos:
+			ismatch wordhlsearch, 8, .nohlsearch	;busco si a partir de la pos 5 del txt machea 'hlsearch '
+			ismatch wordignorecase, 8, .nocase		;busco si a partir de la pos 5 del txt machea 'ignorecase '
+			ismatch wordruler, 8, .noruler			;busco si a partir de la pos 5 del txt machea 'ruler '
 
 			jmp .end
 			.nohlsearch:
-			;Activar el bit de iluminar las busquedas:
+			;Activar el bit para esconder las busquedas:
 				or byte[videoflags], 1<<2
 				jmp .end
 			.nocase:
@@ -542,7 +600,7 @@ set:
 				mov byte[ignoreCase], 0
 				jmp .end
 			.noruler:
-			;Desactivar que muestre las posiciones del cursor
+			;Desactivar el muestreo de las posiciones del cursor
 				mov byte[showpos], 0
 				jmp .end
 		.end:
