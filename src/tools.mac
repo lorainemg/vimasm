@@ -163,13 +163,8 @@ and %1,0x0000ffff
 	jne %1						;si no lo es, entonces es un numero
 %endmacro
 
-
-
-
-
 %define ASCII.enter 25
 %define ASCII.tab 0x09
-
 
 %define mode.fnormal 	0x01
 %define mode.freplace 	0x02

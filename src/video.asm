@@ -73,6 +73,7 @@ section .data
 
     ;video control
     scroll              dd 0      ;linea que marca el scroll
+    global tabsize
     tabsize             dd 7
     buffer.width        dd 80
     buffer.height       dd 24
@@ -80,6 +81,8 @@ section .data
     %define buffer.textlength   0x780
     %define buffer              0xB8000
     %define buffer.lastrow      0xb8f00
+    global showpos
+    showpos             db 1
 
     ;last row control
     mode.normal.tag  db "<NORMAL>",0
@@ -229,12 +232,12 @@ video.Update:
         jnz .trycursor
         call video.UpdateSelection
     .trycursor:
-        test dl,  hidecursor
+        test dl, hidecursor
         jnz .trysearch
         call video.UpdateCursor
     .trysearch:
-       test al, hidesearch
-       ;jnz .end
+       test dl, hidesearch
+       jnz .end
        call video.UpdateSearch
    .end:
    call video.UpdateBuffer
@@ -626,6 +629,8 @@ video.UpdateLastRow:
     mov al,0
     rep stosw
     
+    cmp byte[showpos], 0
+    je end2
     
     mov eax,[buffer.height]
     mul word[buffer.width]

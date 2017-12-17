@@ -2,9 +2,9 @@
 %include "keys.mac"
 
 extern getChar, checkKey1, isKey1
-extern video.Update, vim.update
+extern video.Update, vim.update, videoflags, showpos, tabsize
 extern text.find, text.size, text.substitute, text.findline, text.deletelines, copy.line, text.join
-extern lines.starts, lines.line, lines.current
+extern lines.starts, lines.line, lines.current, ignoreCase
 
 section .bss
 global ctext
@@ -21,14 +21,14 @@ top 		dd 0
 ;Comandos a machear:
 num 			db  0
 worddelete   	db 'delete', 0
-wordyank 		db  'yank', 0
+wordyank 		db 'yank', 0
 wordjoin		db 'join', 0
-wordset 		db 'set', 0
+wordset 		db 'set ', 0
 wordhlsearch 	db 'hlsearch', 0
 wordignorecase	db 'ignorecase', 0
 wordruler		db 'ruler', 0
-wordno 			db 'no', 0
-wordtabstop		db 'tabstop', 0
+wordno 			db 'no ', 0
+wordtabstop		db 'tabstop=', 0
 
 ;Para parsear el reemplazado del texto
 ;El parametro indica (0 en la linea actual, 1 en todo el documento)
@@ -92,12 +92,12 @@ wordtabstop		db 'tabstop', 0
 %endmacro
 
 ;Macro para determinar si una palabra es match con otra
-;call: ismatch match (palabra a machear), pos (la posicion desde la cual se quiere empezar a leer en el texto), label (etiqueta a la cual se salta si no es match)
+;call: ismatch match (palabra a machear), pos (la posicion desde la cual se quiere empezar a leer en el texto), label (etiqueta a la cual se salta si es match)
 %macro ismatch 3
 	push %1
 	push dword %2
 	call match					;busco si el patron machea con 'yank'
-	cmp eax, 0					;si no machea, termino
+	cmp eax, 1					;si no machea, termino
 	je %3
 %endmacro
 
@@ -106,7 +106,8 @@ global start.command
 start.command:
     startSubR
 		call ctext.erase
-        mov dword[top], 0
+        mov dword[top], 1
+		mov byte[ctext], 0
 		mov dword[ccursor], 0
     endSubR 0
 
@@ -264,7 +265,7 @@ ccursor.move:
 		cmp eax, 1
 		jl .end
 		cmp eax, [top]
-		jg .end
+		jge .end
 		mov [ccursor], eax
 	.end:
 	endSubR 4
@@ -274,30 +275,43 @@ ccursor.move:
 ;call stringCmd
 stringCmd:
     startSubR		
-        cmp byte[ctext+1], '/'			;si empieza por /, entonces se esta buscando texto
-        jne .n1
+		ismatch wordset, 1, .set
+		xor edx, edx
+		mov dl, [ctext+1]
+		cmp dl, '/'
+		je .find
+		cmp dl, 's'
+		je .replace
+		cmp dl, '%'
+		je .replaceAll
+		ismatch worddelete, 1, .delete
+		ismatch wordyank, 1, .yank
+		ismatch wordjoin, 1, .join
+
+		.find:
         call find
-		.n1:
-		cmp byte[ctext+1], 's'			;si comienza por 's', entonces se intentara reemplazar
-		jne .n2
+		jmp .end
+		.replace:
 		call replace
-		.n2:
-		cmp byte[ctext+1], '%'
-		jne .n3
+		jmp .end
+		.replaceAll:
 		call replaceAll
-		.n3:		
-		ismatch worddelete, 1, .n4
+		jmp .end
+		.delete:		
 		push dword[lines.current]
 		call delete
-		.n4:
-		ismatch wordyank, 1, .n5
+		jmp .end
+		.yank:
 		push dword[lines.current]
 		call yank
-		.n5:
-		ismatch wordjoin, 1, .n6
+		jmp .end
+		.join:
 		push dword[lines.current]
 		call join
-		.n6:
+		jmp .end
+		.set:
+		call set
+		jmp .end
         .end:
     endSubR 0
 
@@ -308,7 +322,7 @@ find:
         lea esi, [ctext+2]				;comienzo desde la pos 2, para saltar ':/'
         mov edi, pattern				;lo copio en la variable busqueda
         mov ecx, [top]					;cuento cuanto tengo que copiar:
-        sub ecx, 2						;todo los caracteres del texto - 2, para saltar ':/'
+        sub ecx, 3						;todo los caracteres del texto - 2, para saltar ':/'
 		mov eax, ecx					;eax = la longitud del patron
 		rep movsb						;empiezo a copiar las palabras
 		
@@ -341,7 +355,6 @@ replace:
 ;call replaceAll
 replaceAll:
 	startSubR
-<<<<<<< HEAD
 		cmp byte[ctext+2], 's'			;si lo que le sigue a ':%' no es 's', entonces no es un comando valido			
 		jne .false						;asi que salto para false
 		cmp byte[ctext+3], '/'			;si lo que le sigue a ':/%s' no es '/', entonces no es un comando valido
@@ -366,9 +379,11 @@ delete:
 		mov eax, 7					;me ubico en el texto despues de 'delete'
 		cmp byte[ctext+eax], ' ' 	;si en el texto no hay un espacio
 		jne .end					;termino xq no es un comando valido
-		xor edx, edx
-		mov dl, [ctext+eax+1]		;accedo a lo que hay en la siguiente pos del texto + 1
-		sub edx, '1'				;substituyo lo que hay menos el caracter 0, para obtener en edx el numero
+		inc eax
+		push eax
+		call getNum
+		mov edx, eax
+		dec edx
 		mov ebx, [ebp+4]
 		mov eax, [lines.starts+4*ebx]
 		push eax
@@ -385,9 +400,11 @@ yank:
 		mov eax, 5					;me ubico en el texto despues de 'yank'
 		cmp byte[ctext+eax], ' ' 	;si en el texto no hay un espacio
 		jne .end					;termino xq no es un comando valido
-		xor edx, edx
-		mov dl, [ctext+eax+1]		;accedo a lo que hay en la siguiente pos del texto + 1
-		sub edx, '1'				;substituyo lo que hay menos el caracter 0, para obtener en edx el numero
+		inc eax
+		push eax
+		call getNum
+		mov edx, eax
+		dec edx
 		;Llamando a copiar lineas:
 		add edx, [ebp+4]
 		push edx
@@ -407,9 +424,7 @@ join:
 		inc eax
 		push eax
 		call getNum
-		xor edx, edx
-		mov dl, [ctext+eax+1]		;accedo a lo que hay en la siguiente pos del texto + 1
-		sub edx, '0'				;substituyo lo que hay menos el caracter 0, para obtener en edx el numero
+		mov edx, eax
 		;Llamando a copiar lineas:
 		add edx, [ebp+4]
 		push dword[ebp+4]
@@ -420,13 +435,34 @@ join:
 
 ;call:
 ;push dword start: ebp + 4 (comienzo con respecto a ctext donde se quiere empezar a obtener el numero)
-getNum
+getNum:
 	startSubR
 		mov eax, [ebp+4]
-		mov esi, [ctext+eax]
+		lea esi, [ctext+eax]
 		mov edi, num
+		mov ecx, eax
+		xor eax, eax
+		cld
 		.lp:
-		
+			lodsb
+			mov edx, eax
+			inc ecx
+			inRange 48, 57, dl
+			cmp eax, 0
+			je .end
+			mov eax, edx
+			cmp ecx, [top]
+			jge .end
+			stosb
+			jmp .lp
+		.end:
+		dec ecx
+		sub ecx, [ebp+4]
+		xor eax, eax
+		mov al, [num]
+		push num
+		push ecx
+		call getNumberFromASCII
 	endSubR 4
 
 ;Para ver si un comando machea con una palabra a partir de una posicion
@@ -458,10 +494,59 @@ match:
 		xor eax, eax				;si no macheo, en eax dejo 0
 	.end:
 	endSubR 8
-=======
+
+
+;Para parsear una expresion con set
+set:
+	startSubR
+		ismatch wordhlsearch, 5, .hlsearch
+		ismatch wordignorecase, 5, .igncase
+		ismatch wordruler, 5, .ruler
+		ismatch wordtabstop, 5, .tabs
+
+		ismatch wordno, 5, .no
+		jmp .end
+
+		.hlsearch:
+		;Activar el hightlight search
+			and byte[videoflags], ~1<<2
+			jmp .end
+		.igncase:
+		;Ignorar las mayusculas en el macheo del patron
+			mov byte[ignoreCase], 1
+			jmp .end
+		.ruler:
+		;Poner las posiciones del cursor
+			mov	byte[showpos], 1
+			jmp .end
+		.tabs:
+		;Cambiar el tamano de los tabs 13 pos
+			mov eax, 13
+			push eax
+			call getNum
+			mov [tabsize], eax
+			jmp .end
+		
+		.no:
+			ismatch wordhlsearch, 8, .nohlsearch
+			ismatch wordignorecase, 8, .nocase
+			ismatch wordruler, 8, .noruler
+
+			jmp .end
+			.nohlsearch:
+			;Activar el bit de iluminar las busquedas:
+				or byte[videoflags], 1<<2
+				jmp .end
+			.nocase:
+			;Desactivar el bit para ignorar las mayusculas en la busqueda
+				mov byte[ignoreCase], 0
+				jmp .end
+			.noruler:
+			;Desactivar que muestre las posiciones del cursor
+				mov byte[showpos], 0
+				jmp .end
+		.end:
 	endSubR 0
-
-
 
 %macro power 2
 	push ecx
@@ -487,29 +572,26 @@ match:
 %endmacro
 
 
-;push dword adress
-;push dword size 
+;push dword adress: ebp + 8
+;push dword size: ebp + 4
 global getNumberFromASCII
 getNumberFromASCII:
-startSubR
-mov esi,[ebp+8]
-mov ecx,[ebp+4]
-.lp:
-lodsb
+	startSubR
+		mov esi,[ebp+8]
+		mov ecx,[ebp+4]
+		.lp:
+		lodsb
 
-mov dl,al
-sub dl,'0'
-dec ecx 
-power 10,ecx 
+		mov dl,al
+		sub dl,'0'
+		dec ecx 
+		power 10,ecx 
 
-inc ecx 
-mul dl
+		inc ecx 
+		mul dl
 
-add ebx,eax
-loop .lp
-mov eax,ebx
-
- 
+		add ebx,eax
+		loop .lp
+		mov eax,ebx
 endSubR 8
 
->>>>>>> 303620000d49c39da3640c2bb40384a8c6e3737b

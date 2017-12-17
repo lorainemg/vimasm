@@ -20,6 +20,8 @@ section .bss
 	select.cache		resb	65535
 	global search
 	search 				resd	800			;posiciones de las busquedas
+	
+	
 	section .data
 	global cursor
 	cursor 			dd		0			;la posicion del cursor
@@ -47,7 +49,9 @@ section .bss
 	copy.start 		dd 		0
 	copy.mode 		dd		0
 	copy.length		dd		0	
-					
+
+	global ignoreCase			
+	ignoreCase		db		0
 	%define select.mode.normal 	0
 	%define select.mode.line 	1
 	%define select.mode.block 	2
@@ -254,6 +258,11 @@ text.deletelines:
 	startSubR
 		mov edx, [lines.current]
 		add edx, [ebp + 4]			;le adiciono a la linea actual la cantidad de lineas que voy a copiar
+
+		cmp edx, [lines.last]
+		jbe .cont
+		mov edx, [lines.last]
+		.cont:
 		mov [lines.current], edx
 		push edx					;para acceder a la linea final
 		call lines.endline			;busco el final de esa linea
@@ -289,6 +298,11 @@ text.find:
 			.wh:
         		mov ebx, [ebp+4]			;indexar patron[edx]
         		add ebx, edx
+				cmp byte[ignoreCase], 0			;esta activado el bit de ignorar las mayusculas?
+				je .comp					;si no lo esta, hago la comparacion normal
+				or al, 1 << 5				;si lo esta, el texto y el patron los pongo en minuscula
+				or byte[ebx], 1<<5
+				.comp:
         		cmp al, [ebx]				;el texto y el patron en la posicion actual son iguales?
         		je .cont					;si son iguales, continuo
         		cmp edx, 0					;es el indice 0?
@@ -298,6 +312,11 @@ text.find:
 			.cont:
 			mov ebx, [ebp+4]				;indexo patron[edx]
 			add ebx, edx
+			cmp byte[ignoreCase], 0			;esta activado el bit de ignorar las mayusculas?
+			je .comp1					;si no lo esta, hago la comparacion normal
+			or al, 1 << 5				;si lo esta, el texto y el patron los pongo en minuscula
+			or byte[ebx], 1<<5
+			.comp1:
 			cmp al, [ebx]					;son el texto y el patron en las posiciones actuales iguales?
 			jne .last						;si no lo son, salto a la ultima comparacion
 			inc edx							;si lo son, incremento edx
@@ -403,6 +422,9 @@ global text.join
 text.join:
 	startSubR
 		mov ecx, [ebp+4]
+		cmp ecx, [lines.last]
+		jbe .lp
+		mov ecx, [lines.last]
 		.lp:
 			mov edx, [lines.starts+4*ecx]
 			mov [cursor], edx
@@ -921,7 +943,12 @@ endSubR 8
 global copy.line
 copy.line:
 	startSubR
-		push dword[ebp+8] 				;pongo la linea como parametro
+		mov eax, [ebp+8]
+		cmp eax, [lines.last]
+		jbe .cont
+		mov eax, [lines.last]
+		.cont:
+		push eax 						;pongo la linea como parametro
 		call lines.endline				;busco el final de la linea final
 		mov edx, eax					;edx = pos final de la linea final
 		
@@ -931,7 +958,6 @@ copy.line:
 		;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
 		mov ecx, edx					;la cantidad de movimientos q hago:					
 		sub ecx, eax					;la pos final - pos inicial
-		;inc ecx
 		lea esi, [text+eax]				;empiezo a copiar desde el texto en la posicion del principio
 		mov edi, select.cache			;hacia el select cache
 		rep movsb						;y copio desde un lugar a otro la cantidad de veces calculada
@@ -968,7 +994,6 @@ select.copy.block:
 	call lines.startsline		;donde empieza la inicial
 	mov edx,[ebp+4]
 	sub edx,eax    				;edx = comienza inicial
-
 endSubR 8
 
 ;Pega lo guardado en select.cache en el texto desde la posicion del cursor

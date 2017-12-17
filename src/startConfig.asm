@@ -5,13 +5,14 @@ extern text.startConfig
 extern mode.normal,mode.insert, mode.replace, mode.visual
 extern calibrate
 extern video.paintIcon
-extern video.invalidate
+extern video.invalidate, videoflags
 
 section .text
 
 
 global vim.start
   vim.start: ; Initialize game
+    or byte[videoflags], 1 << 2
     call video.paintIcon
   ;Calibrate the timing
     call calibrate
