@@ -9,15 +9,23 @@
 	extern cursor.moveH, cursor.moveV, cursor
 	extern text.insert,lines.newline
 	extern lines.current, lines.startsline, erasetimes, eraseline
-	extern text, text.movebackward, text.moveforward
+	extern text, text.movebackward, text.moveforward, text.save
 
 
 ;main externs
 	extern vim.update,video.Update
 
+section .bss
+global record
+record	resb  400		;graba las palabras que se escriben
 
 section .data
 start dd 0
+
+global count
+count dd 0				;lleva la cuenta de cuantas palabras se han escrito
+global save
+save db	0				;determina cuando empezar a guardar las palabras que se escriben
 
 section .text
 
@@ -34,12 +42,19 @@ mode.insert:
 		call getChar				;obtiene el caracter de la tecla que se presiono
 		cmp ax, 0 					;si no se presiona ninguna tecla
 		je .commad					;entonces se salta hasta el final
+		
+		cmp byte[save], 0
+		je .noRecord
+		mov edx, [count]
+		mov [record+edx], al
+		inc dword[count]
+		
+		.noRecord:
 		push eax					;se guarda el caracter en la pila como parametro de text.write
 		call text.insert				;se procede a escribir el caracter en el texto	call UpdateBuffer
 		jmp .end
 
 	.commad:
-
 	;Para comprobar las teclas de movimientos
 		checkKey1 key.left,  .moveleft			;Comprueba si se presiono la tecla izq 
 		checkKey1 key.right, .moveright			;Comprueba si se presiono la tecla der 
@@ -60,21 +75,25 @@ mode.insert:
 	;movimientos del cursor
 
 		.moveright:					;mueve el cursor a la derecha
+			mov dword[save], 0
 			push dword 1
 			call cursor.moveH			
 			jmp .end
 	
 		.moveleft:					;mueve el cursor a la izquierda
+			mov dword[save], 0
 			push dword -1
 			call cursor.moveH
 			jmp .end
 	
 		.moveup:					;mueve el cursor hacia arriba
+			mov dword[save], 0
 			push dword -1
 			call cursor.moveV
 			jmp .end
 	
 		.movedown:					;mueve el cursor para abajo
+			mov dword[save], 0
 			push dword 1
 			call cursor.moveV
 			jmp .end
@@ -83,40 +102,48 @@ mode.insert:
 
 		.tab:
 		;Logica de tab
+			mov dword[save], 0
 			push dword ASCII.tab		;inserta un tab en la posicion actual del texto
 			call text.insert
 			jmp .end
 	
 		.backspace:
 		;Logica del backspace
+			mov dword[save], 0
 			push dword[cursor]			;para borrar mueve el texto hacia la izq desde la posicion del cursor
 			call text.movebackward
 			jmp .end
 	
 		.enter:
 		;Logica del enter
+			mov dword[save], 0
 			call lines.newline			;para presionar enter crea una nueva linea
 			jmp .end
 	
 		.eraseword:
 		;Logica para borrar una palabra. Borra desde la posicion del cursor en adelante
+			mov dword[save], 0
 			call eraseword		
+			call text.save
 			jmp .end
 
 		.erasestartline:
 		;Logica para borrar hasta el inicio de linea
+			mov dword[save], 0
 			call eraseline
+			call text.save
 			jmp .end
 
 		.exitmode:
 		;Logica para salir del modo
+			mov dword[save], 0
 			mov dword[start], 0
+			call text.save
 			ret
 			jmp .end
 	.end:
 	;Update
 	call video.Update
-	
 	.end2:
 	call vim.update
 	mov dword[start], 1

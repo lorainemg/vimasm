@@ -228,7 +228,7 @@ video.Update:
         call video.UpdateText
         mov dl, [videoflags]
      .trysearch:
-       test al, hidesearch
+       test dl, hidesearch
        jnz .tryselection
        call video.UpdateSearch
     .tryselection:

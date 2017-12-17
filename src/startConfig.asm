@@ -13,6 +13,8 @@ section .text
 global vim.start
   vim.start: ; Initialize game
     or byte[videoflags], 1 << 2
+    or byte[videoflags], 1 << 1
+
     call video.paintIcon
   ;Calibrate the timing
     call calibrate

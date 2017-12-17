@@ -43,7 +43,7 @@ extern undopivot,text.load ,text.save
 	je %%.line						;entonces realizo la operacion en modo linea
 	mov byte[lastkey], %1			;si no, entonces guardo en lastKey el caracter de la tecla que se presiono
 	jmp %%.end						;y termino
-	%%.line:	
+	%%.line:
 		repetition 1, %2			;busco las repeticiones que pudiera tener el operador, y llamo a la funcion en modo linea
 	%%.end:
 %endmacro
@@ -62,6 +62,7 @@ extern undopivot,text.load ,text.save
 		repetition %1, copyOperator	;busco las repeticiones que pudieran haber y entro en el modo correspondiente a copiar
 		jmp %%.end
 	%%.delete:						;Para eliminar:
+		call text.save
 		repetition %1, eraseOperator ;busco las repeticiones que pudieran haber y entro en el modo correspondient a borrar
 		cmp byte[lastkey], 'c'		;se entro en modo reemplazar?
 		jne %%.end					;si no se hizo, entonces termino
@@ -199,6 +200,7 @@ mode.normal:
 		;Logica para pegar
 			clean
 			call select.paste
+			call text.save
 			jmp .end
 		.undo:						
 		;Logica para deshacer una accion
@@ -243,6 +245,7 @@ mode.normal:
 			je .line						;entonces, realizo la operacion
 			mov byte[lastkey], 'c'			;si no, cambio el valor de la ultima tecla
 			jmp .end						;y voy al final
+			call text.save
 			.line:							;Para realizar la operacion:
 				repetition 1, eraseOperator	;busco las repeticiones y entro en modo linea a eraseOperator
 				clean						;limpio los valores de lastKey
@@ -288,7 +291,6 @@ mode.normal:
 			jmp .end
 
 	.end:
-	or byte[videoflags], 1 << 1				;para terminar, se activa el bit de esconder la seleccion
 	call video.Update						;y se actualiza el video
 	.end2:
 	call vim.update

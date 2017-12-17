@@ -18,7 +18,7 @@ section .bss
 	global lines.lengths
 	lines.lengths 	resd 	800
 
-	undo 			resd     8992000						;cincuenta reservaciones
+	undo 			resd     899200						;cincuenta reservaciones
 
 
 	select.cache		resb	65535
@@ -32,6 +32,7 @@ section .bss
 	global cursor
 	cursor 			dd		0			;la posicion del cursor
 	
+	movCursor		db 		0		;para indicar cuando el cursor se mueve, para guardar
 	global text.size
 	text.size 		dd 		0
 	global lines.current
@@ -74,6 +75,7 @@ text.startConfig:
 	; section .bss:
 		mov word [lines.lengths],1		;valor inicial del texto 
 		mov dword[text.size], 1
+		call text.save
 endSubR 0
 
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
@@ -115,6 +117,13 @@ text.insert:
 		push dword[cursor]
 		call text.moveforward
 
+		cmp byte[movCursor], 0
+		je .cont
+
+		mov byte[movCursor], 0
+		call text.save
+
+		.cont:
 		mov ebx,text  					;ebx =text
 		add ebx,[cursor]				;ebx = text + cursor
 		mov al,[ebp+4]   				;guardo 
@@ -688,24 +697,11 @@ cursor.moveH:
 		cmp eax, 0				    ;me puedo mover?
 		je .end 					;si no me puedo mover, entonces no hago nada
 
+		mov byte[movCursor], 1
 		mov byte[moveV], 0			;si se movio horizontal, entonces el valor anterior del desplazamiento vertical se quita
 		
-		push dword[lines.current]	;pongo la linea actual como parametro
-		call lines.endline			;para preguntar por su fin de linea
-		mov ebx, eax				;ebx = fin de linea
-		xor eax, eax				;limpio eax
-		mov ax, [cursor]			;pongo la posicion del cursor	
-		.lp:
-			mov edx, text 			;guardo en edx el texto
-			add ax, [ebp+4]			;adiciono la pos actual + la dir a la que me muevo
-			add edx, eax			;para indexar text[cursor]
-			cmp byte[edx], 0		;si no hay 0 en el texto
-			jne .end1				;si no lo hay, entonces termino
-			cmp ax, bx				;o si la posicion en la que estoy es el final de la linea
-			je .end1				;entonces termino
-			jmp .lp					;sino, continuo
-		.end1:
-		mov [cursor], ax			;pongo el cursor en la posicion calculada
+		mov eax, [ebp+4]
+		add dword[cursor], eax
 		.end:
 endSubR 4
 
@@ -720,6 +716,8 @@ cursor.moveV:
 		cmp eax, 0					;me puedo mover?
 		je .end 					;si no, entonces salto para el final
 		
+		mov byte[movCursor], 1
+
 		;Procedo a mover el cursor:
 		push dword[lines.current]		;guardo la linea actual como parametro
 		call lines.startsline			;y pregunto por su inicio de linea
@@ -861,6 +859,18 @@ select.changemode:
 		mov [select.mode], eax
 	endSubR 4
 
+;Mueve el cursor en el principio de la seleccion
+global select.movestart
+select.movestart:
+	startSubR
+		mov eax, [select.start]
+		mov [cursor], eax
+
+		push eax
+		call lines.line
+		mov [lines.current],eax
+	endSubR 0
+
 ;Para copiar una porcion del texto
 	;call:
 	;call select.copy
@@ -927,7 +937,7 @@ endSubR 8
 	;push dword address ebp+12
 	;push dword end: ebp + 8
 	;push dword start: ebp + 4
-	;call select.copy.normals
+	;call select.copy.normal
 global copy.normal
 copy.normal:
 	startSubR
@@ -945,6 +955,7 @@ copy.normal:
 		stosb							;al final de la copia pongo 
 		mov eax,edi
 endSubR 12
+
 ;Guarda la copia en modo linea
 	;call:
 	;push dword end ebp+8
@@ -1116,6 +1127,49 @@ select.paste:
 		.end: 
 endSubR 0
 
+;Inserta una palabra en cada linea de la seleccion en modo bloque
+;push dword endpos:ebp + 12
+;push dword lenWord:ebp + 8
+;push dword dirWord:ebp + 4
+global block.insert
+block.insert:
+	startSubR
+		push dword[ebp+12]					;Para obtener la cantidad de lineas que tengo que copiar:
+		call lines.line
+		mov ecx, eax
+		push dword[select.start]
+		call lines.line
+		sub ecx, eax 						;ecx = linea del final de la seleccion - linea del principio de la seleccion
+		mov edx, [lines.starts+4*eax]
+		mov ebx, [select.start]
+		sub ebx, edx						;ebx = posicion a partir del principio de linea en la cual tengo que insertar la palabra
+		mov edx, eax						;edx = primera linea de seleccion
+		inc edx								;en la primera linea ya esta insertada la palabra, asi que me la salto
+		cld
+		.lp:								;por cada linea:
+			mov eax, [lines.lengths+4*edx]
+			cmp eax, ebx					;es la longitud de mi linea actual menor que la posicion a partir de la cual voy a copiar?
+			jb .continue					;si lo es, entonces continuo, no insertando la palabra en el texto
+			;Insertando la palabra:
+			mov eax, [lines.starts+4*edx]
+			add eax,ebx						;busco la posicion en que tengo que empezar a insertar: principio de linea + movimiento de seleccion
+			mov [cursor], eax				;pongo el cursor en la posicion de insercion
+			mov [lines.current], edx		;y la linea actual en la linea en que se situa el cursor			
+			push ecx						;guardo temporalmente la cantidad de movimientos que tenia contados
+			mov ecx, [ebp+8]				;la cantidad de movimientos que hago ahora: la longitud de la palabra
+			xor eax, eax
+			mov esi, [ebp+4]				;copio desde mi palabra
+			.wh:							;Inserto la palabra:
+				lodsb						;al = caracter de la palabra actual
+				push eax
+				call text.insert			;inserto el caracter en el texto en la pos del cursor
+				loop .wh					;repito el ciclo
+			pop ecx							;recupero el valor de ecx
+			.continue:						;continuo el loop:
+			inc edx							;incremento la linea que estoy analizando
+			loop .lp						;y repito el ciclo
+	endSubR 12
+
 
 global text.save  
 text.save:
@@ -1144,10 +1198,9 @@ startSubR
 	mov esi,text 
 	rep movsd
 	
-
-
-add dword[undopivot],3004
+	add dword[undopivot],3004
 endSubR 0
+
 global text.load   
 text.load:
 startSubR

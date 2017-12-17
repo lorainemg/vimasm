@@ -4,11 +4,14 @@
 ;keyboad externs
 extern isKey1,isKey2,isKey3, getChar 
 ;text externs
-extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy, select.changemode
+extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy, select.changemode, save, mode.insert, select.movestart, record,count
 ;tratamiento de lineas:
-extern lines.startsline, lines.endline, lines.endword, lines.current
+extern lines.startsline, lines.endline, lines.endword, lines.current, block.insert
 ;main externs
 extern vim.update, video.Update, videoflags
+
+section .data
+mode dd 0       ;para guardar el modo de seleccion (0 normal, 1 linea, 2 bloque)
 
 section .text
 ;call:
@@ -17,9 +20,10 @@ global start.visual
 start.visual:
 startSubR
     mov eax, [ebp+4]
+    mov [mode], eax
     push eax
     call select.mark
-    xor byte[videoflags], 1<< 1
+    and byte[videoflags], ~1<< 1
 endSubR 4
 
 global mode.visual
@@ -37,6 +41,8 @@ mode.visual:
     checkKey2 key.shiftL, key.4, .endline    
     checkKey2 key.shiftL, key.6, .startline
     checkKey1 key.w, .endword
+
+    checkKey2 key.shiftL, key.i, .insert
 
     ;Cambiar de modo dentro del modo visual
 	checkKey2 key.shiftL, key.v, .visualLinemode	;si se presiono shift+v
@@ -71,17 +77,20 @@ mode.visual:
 
 	.visualmode:
 	;Logica para cambiar al modo visual con seleccion estandar
+        mov dword[mode], 0
 		push dword 0
 		call select.changemode
 		jmp .end
 	.visualLinemode:
 	;Logica para cambiar al modo visual con seleccion en modo linea
-		push dword 1
+		mov dword[mode], 1
+        push dword 1
 		call select.changemode
 		jmp .end
 	.visualBlockmode:
 	;Logica para cambiar al modo visual con seleccion en modo bloque
-		push dword 2
+		mov dword[mode], 2
+        push dword 2
 		call select.changemode
 		jmp .end
 
@@ -107,6 +116,25 @@ mode.visual:
         mov [cursor], eax
     jmp .end
 
+    .insert:
+    ;Para entrar en la insercion en modo bloque
+        cmp dword[mode], 2              ;si no se esta en modo bloque, entonces no se hace nada
+        jne .end
+       	or byte[videoflags], 1 << 1		;se activa el bit de esconder la seleccion
+        push  dword[cursor]              ;guardo la posicion del cursor, que es el final de la seleccion
+        call select.movestart           ;se pone el cursor en la posicion de inicio de la seleccion
+        mov byte[save], 1               ;activo la variable para empezar a grabar
+        call mode.insert                ;y llamo a insertar      
+        mov dword[save], 0
+      
+       ; push edx
+        push dword[count]
+        push record
+       ; break
+        call block.insert
+        jmp .finish
+    jmp .end
+
     .exit:
        jmp .finish
     ;Logica para salir del modo
@@ -119,4 +147,5 @@ mode.visual:
 	call vim.update
     jmp mode.visual
     .finish:
+    or byte[videoflags], 1 << 1				;para terminar, se activa el bit de esconder la seleccion
 ret
