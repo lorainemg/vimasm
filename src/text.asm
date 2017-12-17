@@ -8,6 +8,7 @@ section .edata
 
 section .bss
 
+	var             resd 	10	
 	global text
 	text			resb 	65535						;donde guardo el texto
 	;trabajo con lineas
@@ -17,10 +18,17 @@ section .bss
 	global lines.lengths
 	lines.lengths 	resd 	800
 
+	undo 			resd     8992000						;cincuenta reservaciones
+
+
 	select.cache		resb	65535
 	global search
 	search 				resd	800			;posiciones de las busquedas
+	
+	
 	section .data
+	global undopivot
+	undopivot		dd      0
 	global cursor
 	cursor 			dd		0			;la posicion del cursor
 	
@@ -792,7 +800,7 @@ select.copy:
 		jmp .end							;salto al final
 
 	.tryblock:
-		call select.copy					;copio en modo bloque
+		call select.copy.block 
 
 	.end:
 	;guardo los datos de la copia
@@ -822,7 +830,29 @@ select.copy.normal:
 		xor al,al
 		stosb							;al final de la copia pongo 
 endSubR 8
-
+	
+	;call:
+	;push dword address ebp+12
+	;push dword end: ebp + 8
+	;push dword start: ebp + 4
+	;call select.copy.normals
+global copy.normal
+copy.normal:
+	startSubR
+		cld 
+		mov eax,[ebp+4]					;eax = principio de la copia
+		mov edx,[ebp+8]					;edx = final de la copia
+		;Se copiaria, desde el principio de la linea hasta el final de mi linea actual
+		mov ecx, edx					;la cantidad de movimientos q hago:					
+		sub ecx, eax					;el final - inicio de la copia
+		inc ecx
+		lea esi, [text+eax]				;copio desde el texto a partir del inicio
+		mov edi, [ebp+12]			;copio hacia el cache de la copia
+		rep movsb						;voy moviendo de un lugar a otro las veces calculadas
+		xor al,al
+		stosb							;al final de la copia pongo 
+		mov eax,edi
+endSubR 12
 ;Guarda la copia en modo linea
 	;call:
 	;push dword end ebp+8
@@ -872,32 +902,100 @@ endSubR 8
 ;push start ebp+4
 select.copy.block:
 	startSubR
+	 
+	mov edi,select.cache
 	;calculo la cantidad de lineas que componen el bloque
-
 	;calculo linea final
-	push dword [ebp+8]
-	call lines.line
-	mov ecx,eax                	;calculo cual es la linea final  
+    push dword [ebp+8]
+    call lines.line
+    mov ecx,eax                	;calculo cual es la linea final  
+    ;calculo caracter final
+    push eax 					;salvo linea final
+    call lines.startsline
+    mov ebx,[ebp+8]
+    sub ebx,eax					;ebx = caracter final
+    ;calculo linea inicial
+    push dword [ebp+4]
+    call lines.line
+    push eax 					;salvo linea inicial
+    ;calculo caracter inicial
+    push eax					;se consume con el llamado de abajo
+    call lines.startsline		;donde empieza la inicial
+    mov edx,[ebp+4]
+    sub edx,eax    				;edx = comienza inicial
+    pop eax
+    
 
-	;calculo caracter final
-	push eax 					;salvo linea final
-	call lines.startsline
-	mov ebx,[ebp+8]
-	sub ebx,eax					;ebx = caracter final
+    sub ecx,eax					;ecx = cantidad de lineas del bloque
+    inc ecx
+    .lp:
+    mov [var],eax
+    push eax
+    push eax
+    call lines.startsline
+    cmp ebx,edx                 ;veo si hay que invertir los valores para enviarselos a select.normal
+    ja .invert
+    add eax,edx
+    push eax 
+    sub eax,edx
+    add eax,ebx
+    push eax 
+    jmp .normalcall
+    .invert:            ;arreglo de orden de pushs. primero end luego start
+    add eax,ebx
+    push eax 
+    sub eax,ebx
+    add eax,edx
+    push eax
+    .normalcall:
+    push dword[var]                                       ;dword[var] tiene la linea actual
+    call lines.endline                            
+    pop  dword[var +4]                                    ;dword[var +4] = inicio
+    push dword[var +4]                                    ;para usar registro y salvar su valor
+    cmp dword[var +4],eax                                 ;comparo el final de la linea con el inicio de la seleccion
+    jb .trycutend                              ;intento ver que pasa con el final
+    jmp .nextline                               ;salto de linea
+    .trycutend:                                 ;limito si el final de linea es menor que el final entonces el final es el final de linea
+    pop dword[var +4]                                     ;dword[var +4] = inicio
+    pop dword[var]                                     ;dword[var] = final
+	push edi 
+	cmp [var],eax                                 
+    jae .cutend 
+    push dword[var]
+    push dword[var +4]
+    jmp .copyrange
+    .cutend:
+    mov [var],eax
+    dec dword[var] 
+    push dword[var]
+    push dword[var +4]
+    .copyrange:
+    call copy.normal
+    mov edi,eax
+	jmp .endlp
+    .nextline:
+    pop eax
+    pop eax
+    .endlp:
+    pop eax
+    inc eax
 
-	;calculo linea inicial
-	push dword [ebp+4]
-	call lines.line
-	;push eax 					;salvo linea inicial
-	sub ecx,eax					;ecx = cantidad de lineas del bloque
-
-	;calculo caracter inicial
-	push eax					;se consume con el llamado de abajo
-	call lines.startsline		;donde empieza la inicial
-	mov edx,[ebp+4]
-	sub edx,eax    				;edx = comienza inicial
-
+	dec ecx 
+    cmp ecx,0
+	je .end 
+	jmp .lp
+	.end:
 endSubR 8
+
+
+select.paste.block:
+	startSubR
+	
+	mov esi,select.cache
+
+
+endSubR 0
+
 
 ;Pega lo guardado en select.cache en el texto desde la posicion del cursor
 global select.paste
@@ -917,4 +1015,70 @@ select.paste:
 				call lines.newline		;llamo  a crear linea
 				jmp .lp
 		.end: 
+endSubR 0
+
+
+global text.save  
+text.save:
+startSubR
+	;orden: cursor,current,last,size,starts,length,text 
+	mov eax,[undopivot]
+	lea edi,[undo + 4*eax] 
+	cld
+	mov eax,[cursor]  
+	stosd 
+	mov eax,[lines.current]  
+	stosd
+	mov eax,[lines.last]  
+	stosd
+	mov eax,[text.size]
+	stosd 
+
+	mov ecx,500
+	mov esi,lines.starts
+	rep movsd
+	mov ecx,500
+	mov esi,lines.lengths
+	rep movsd
+
+	mov ecx,2000
+	mov esi,text 
+	rep movsd
+	
+
+
+add dword[undopivot],3004
+endSubR 0
+global text.load   
+text.load:
+startSubR
+	;orden: cursor,current,last,size,starts,length,text 
+	mov eax,[undopivot]
+	sub eax,3004
+	lea esi,[undo + 4*eax] 
+	cld
+	
+	lodsd
+	mov [cursor],eax  
+	lodsd 
+	mov [lines.current],eax   
+	lodsd
+	mov [lines.last],eax   
+	lodsd
+	mov [text.size],eax 
+	 
+
+	mov ecx,500
+	mov edi,lines.starts
+	rep movsd
+	mov ecx,500
+	mov edi,lines.lengths
+	rep movsd
+
+	mov ecx,2000
+	mov edi,text 
+	rep movsd
+
+	sub dword[undopivot],3004 
+	
 endSubR 0

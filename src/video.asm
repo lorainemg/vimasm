@@ -73,7 +73,7 @@ section .data
 
     ;video control
     scroll              dd 0      ;linea que marca el scroll
-    tabsize             dd 7
+    tabsize             dd 4
     buffer.width        dd 80
     buffer.height       dd 24
     %define buffer.length       2000 
@@ -224,18 +224,19 @@ video.Update:
         call video.UpdateLastRow
         call video.UpdateText
         mov dl, [videoflags]
+     .trysearch:
+       test al, hidesearch
+       jnz .tryselection
+       call video.UpdateSearch
     .tryselection:
         test dl, hideselection
         jnz .trycursor
         call video.UpdateSelection
     .trycursor:
         test dl,  hidecursor
-        jnz .trysearch
+        jnz .end
         call video.UpdateCursor
-    .trysearch:
-       test al, hidesearch
-       ;jnz .end
-       call video.UpdateSearch
+   
    .end:
    call video.UpdateBuffer
    
@@ -298,7 +299,9 @@ video.UpdateBuffer:
         .ww:
         push ecx
         mov ah,[format.text]
-        mov al,0
+        and ah,0xf0
+        or ah,0x09
+        mov al,250
         mov ecx,ebx
         rep stosw 
         pop ecx  
