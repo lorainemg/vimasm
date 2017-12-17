@@ -369,9 +369,24 @@ video.UpdateCursor:
     mov [buffer.textcache + 2*edx +1],al
 endSubR 0
 
+global cursor.noblink
+cursor.noblink:
+startSubR
+or byte[videoflags],1000b
+and byte [videoflags],~0x1
+endSubR 0
+
+
+global cursor.blink 
+cursor.blink:
+and byte [videoflags],~0x4
+startSubR
+
+
+endSubR 0
+
 video.RCursor:
     startSubR
-    
     test dword [videoflags],respawcursor
     jnz .end
     push dword 350
