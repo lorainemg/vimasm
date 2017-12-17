@@ -18,7 +18,7 @@ section .bss
 	global lines.lengths
 	lines.lengths 	resd 	800
 
-	undo 			resd     8992000						;cincuenta reservaciones
+	undo 			resd     299200						;quinientas reservaciones
 
 
 	select.cache		resb	65535
