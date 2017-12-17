@@ -227,18 +227,19 @@ video.Update:
         call video.UpdateLastRow
         call video.UpdateText
         mov dl, [videoflags]
+     .trysearch:
+       test al, hidesearch
+       jnz .tryselection
+       call video.UpdateSearch
     .tryselection:
         test dl, hideselection
         jnz .trycursor
         call video.UpdateSelection
     .trycursor:
-        test dl, hidecursor
-        jnz .trysearch
+        test dl,  hidecursor
+        jnz .end
         call video.UpdateCursor
-    .trysearch:
-       test dl, hidesearch
-       jnz .end
-       call video.UpdateSearch
+   
    .end:
    call video.UpdateBuffer
    
@@ -301,7 +302,9 @@ video.UpdateBuffer:
         .ww:
         push ecx
         mov ah,[format.text]
-        mov al,0
+        and ah,0xf0
+        or ah,0x09
+        mov al,250
         mov ecx,ebx
         rep stosw 
         pop ecx  

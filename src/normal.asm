@@ -11,7 +11,7 @@ extern select.copy.normal, copy.line,
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command
 ;main externs
 extern vim.update, video.Update, videoflags
-
+extern undopivot,text.load ,text.save 
 ;Para realizar las repeticiones de los operadores:
 ;Tine como parametros una funcion que recibe 2 parametros:primero las veces
 ;que se repite una operacion y luego el modo en que se realiza la operacion
@@ -100,6 +100,7 @@ mode.normal:
 
 	;Controles optativos:
 		checkKey1 key.u, .undo					;si se presiono u
+		checkKey1 key.s, .save 					;si se presiono u
 		checkKey1 key.point, .point				;si se presiono .
 
 	;Moverse por el fichero:
@@ -201,6 +202,13 @@ mode.normal:
 			jmp .end
 		.undo:						
 		;Logica para deshacer una accion
+			cmp dword [undopivot],0
+			je .end 
+			call text.load  
+			clean
+			jmp .end
+		.save:
+			call text.save   
 			clean
 			jmp .end
 		.goStart:
