@@ -5,7 +5,7 @@ extern text.startConfig
 extern mode.normal,mode.insert, mode.replace, mode.visual
 extern calibrate
 extern video.paintIcon
-extern video.invalidate, videoflags
+extern video.invalidate, videoflags,video.presentation
 
 section .text
 
@@ -16,6 +16,7 @@ global vim.start
     call video.paintIcon
   ;Calibrate the timing
     call calibrate
+    call video.presentation
   ;Cofiguro el inicio de los estados de los ensamblados
     call text.startConfig
   ;llamo a la funcion especial que abre el comienzo de la pantalla inicial, y sus respectivas opciones.

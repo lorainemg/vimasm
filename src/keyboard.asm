@@ -124,7 +124,8 @@ section .edata
 
 section .data
 	keyflags 	db 0 ;control flag var 
-   	lastScan 	db 0
+   	global lastScan
+	   lastScan 	db 0
 
 section .text
 
