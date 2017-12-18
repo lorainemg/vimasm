@@ -163,6 +163,7 @@ mode.insert:
 			cmp edx,eax
 			je .end  
 
+			call text.save
 			mov eax, [lines.current]
 			dec eax
 			push eax 

@@ -5,10 +5,12 @@ Loraine Monteagudo Garcia C211
 Tony Raul Blanco Fernandez C211
 
 Funcionalidades implementadas:
+Ademas de las funcionalidades basicas que requieren 3ptos se implementaron las siguientes funcionalidades optativas:
+
 (0.75):Operadores+repeticiones+movimiento
 (0.75):comando punto
-(0.5):seleccion en bloque
 (0.5):insercion en modo bloque  
+(0.5):seleccion en bloque
 (0.5):reemplazar texto
 (0.25):ir al inicio, final y una linea especifica del fichero
 (0.25):entrar en modo sobreescribir
@@ -21,3 +23,28 @@ Funcionalidades implementadas:
 (0.25):deshacer infinito
 (0.25):blinking cursor
 (0.25):pegar desde registro
+
+Estructura del proyecto:
+vimasm/
+    ├──	src/
+    │	├──	multiboot.asm
+    │	├──	boot.asm
+    │	├──	main.asm
+    │	├──	startConfig.asm
+    │	├──	keyboard.asm
+    │	├──	keys.mac
+    │	├──	video.asm
+    │	├──	video.mac
+    │	├──	command.asm
+    │	├──	normal.asm
+    │	├──	replace.asm
+    │	├──	text.asm
+    │	├──	tools.mac
+    │	├──	visual.asm
+    │	└──	timing.asm
+    ├──	Makefile
+    ├──	README.md
+    ├──	ORIENTACIÓN.md
+    ├──	linker.ld
+    ├──	menu.lst
+    └──	stage2_eltorito
