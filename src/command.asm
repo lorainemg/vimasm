@@ -3,8 +3,8 @@
 
 extern getChar, isKey1, checkKey1
 extern video.Update, vim.update, videoflags, showpos, tabsize
-extern text.find, text.size, text.substitute, text.findline, text.deletelines, copy.line, text.join, text.save
-extern lines.starts, lines.current, ignoreCase, lines.last
+extern text.find, text.size, text.substitute, text.findline, text.deletelines, copy.line, text.join, text.save, text, lines.newline
+extern lines.starts, lines.current, ignoreCase, lines.last, lines.lengths, lines.starts, text.movebackward, cursor, text.insert, erasetimes
 
 section .bss
 global ctext
@@ -12,6 +12,7 @@ ctext 	resb 80
 string 	resb 80
 pattern	resb 80
 num 	resb 40
+line 	resb 200
 
 section .data
 global ccursor
@@ -24,6 +25,7 @@ numLen			dd 0		;la cantidad de digitos de un numero
 worddelete   	db 'delete ', 0
 wordyank 		db 'yank ', 0
 wordjoin		db 'join ', 0
+wordmove		db 'move ', 0
 wordset 		db 'set ', 0
 wordhlsearch 	db 'hlsearch', 0
 wordignorecase	db 'ignorecase', 0
@@ -292,6 +294,7 @@ stringCmd:
 		ismatch worddelete, 1, .delete		;intento machear la palabra 'delete '
 		ismatch wordyank, 1, .yank			;intento machear la palabra 'yank '
 		ismatch wordjoin, 1, .join			;intento machear la palabra 'join '
+		ismatch wordmove, 1, .move
 
 		jmp .end
 
@@ -333,6 +336,12 @@ stringCmd:
 		;Para setear preferencias
 		call set
 		jmp .end
+		.move:
+		;Para mover lineas
+		push dword 6
+		push dword[lines.current]
+		call move
+
         .end:
     endSubR 0
 
@@ -440,7 +449,7 @@ yank:
 ;Comando para juntar dos lineas
 ;call:
 ;push dword pos: ebp + 8	(posicion a partir del texto del cual se va a empezar a parsear el numero)
-;push dword start: ebp + 4	(linea a partir del cual se va eliminar)
+;push dword start: ebp + 4	(linea a partir del cual se va juntar)
 join:
 	startSubR
 		push dword[ebp+8]					
@@ -449,13 +458,85 @@ join:
 		call text.save
 		pop eax
 		mov edx, eax
-		;Llamando a copiar lineas:
+		;Llamando a juntar lineas:
 		add edx, [ebp+4]			;edx = ultima linea que tengo que juntar
 		push dword[ebp+4]
 		push edx
 		call text.join
 		.end:	
 	endSubR 8
+
+;Comando para mover todas las lineas hacia un inicio, y la del inicio al final
+;call:
+;push dword pos: ebp + 8	(posicion a partir del texto del cual se va a empezar a parsear el numero)
+;push dword start: ebp + 4	(linea a la cual se va mover)
+move:
+	startSubR
+		push dword[ebp+8]					
+		call getNum					;obtengo un numero desde la pos del texto para obtener la cantidad de lineas que tengo que juntar
+		cmp eax, [lines.last]
+		ja .end
+		push eax
+		call text.save
+		
+		push dword[ebp+4]
+		call copyLine
+		
+		call pasteLine
+		.end:
+	endSubR 8
+
+;push dword line: ebp + 4
+copyLine:
+	startSubR
+		mov eax, [ebp+4]
+		cmp eax, [lines.last]
+		ja .end
+		
+		mov ecx, [lines.lengths+4*eax]
+		mov edx, [lines.starts+4*eax]
+
+		lea esi, [text+edx]
+		mov edi, line
+		cld
+		rep movsb
+	
+		mov ebx, [ebp+4]
+		mov eax, [lines.starts+4*ebx]	;eax = inicio de la linea a partir de la cual quiero eliminar
+		push eax
+		push dword 0
+		call text.deletelines
+
+		xor eax, eax
+		stosb
+		.end:
+	endSubR 4
+
+;push dword line: ebp + 4
+pasteLine:
+	startSubR
+		mov eax, [ebp+4]
+		dec eax
+		mov esi, line
+		mov edx, [lines.starts+4*eax]
+		mov [cursor], edx
+		mov [lines.current], eax
+	
+		xor eax, eax
+		.lp:
+			lodsb
+			cmp al, 0
+			je .end
+			cmp al, ASCII.enter
+			je .nwln
+			push eax
+			call text.insert
+			jmp .lp
+			.nwln:
+			call lines.newline
+			jmp .lp
+		.end:
+	endSubR 4
 
 ;Para obtener el inicio de las operaciones delete, join y yank
 initOp:
@@ -474,7 +555,8 @@ initOp:
 		inc edx					
 		ismatch worddelete, edx, .delete	;intento machear la palabra 'delete '
 		ismatch wordyank, edx, .yank		;intento machear la palabra 'yank '
-	;	ismatch wordjoin, edx, .join		;intento machear la palabra 'join '
+		ismatch wordjoin, edx, .join		;intento machear la palabra 'join '
+		ismatch wordmove, edx, .move		;intento machear la palabra 'move '
 
 		jmp .end
 		.delete:
@@ -500,6 +582,13 @@ initOp:
 			push edx
 			push eax
 			call join
+			jmp .end2
+		.move:
+			pop eax
+			add edx, 5
+			push edx
+			push eax
+			call move
 			jmp .end2
 		.end:
 			pop eax

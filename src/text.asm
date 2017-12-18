@@ -146,7 +146,6 @@ endSubR 4
 global text.insert
 text.insert:
 	startSubR
-
 		push dword[cursor]
 		call text.moveforward
 
