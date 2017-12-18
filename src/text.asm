@@ -30,6 +30,7 @@ section .bss
 	section .data
 	global pRecord.mode
 	pRecord.mode 	dd 		0
+	global pRecord.top
 	pRecord.top 	dd 		0
 
 	global undopivot
@@ -144,27 +145,33 @@ text.insert:
 		mov eax,[pRecord.top]
 		mov edx,[ebp+4]
 		mov [pRecord.cache+eax],dl
-		mov byte [pRecord.cache+eax+1],0
-		
+		mov byte [pRecord.cache+eax+1],0		
 		inc dword[pRecord.top]
 	endSubR 4
 
+global pastepRecord
 pastepRecord:
 startSubR
+		cld
 		mov esi, pRecord.cache			;copio desde el select cache, donde esta el texto copiado
+		mov ecx,[pRecord.top]
+		mov edx,ecx  
 		.lp:
-			lodsb						;al = caracter que va a ser copiado
-			cmp al, 0					;si al = 0
-			je .end						;entonces ya termine de copiar
+			lodsb						;entonces ya termine de copiar
 			cmp al, ASCII.enter			;al == enter?
 			je .newline					;si lo es, tengo que crear una nueva linea
-			push eax					;sino pongo el caracter actual
+			push dword eax					;sino pongo el caracter actual
 			call [pRecord.mode]			;y lo inserto en el texto
-			jmp .lp
+			 
+			xor eax,eax 
+			loop  .lp
+			jmp .end 
 			.newline:					;para crear una nueva linea
 				call lines.newline		;llamo  a crear linea
-				jmp .lp
+			loop .lp
 		.end: 
+		 mov [pRecord.top],edx 
+		  
 endSubR 0
 ;mueve todo el texto
 	;call 
@@ -305,7 +312,7 @@ text.movebackward:
 		inc dword [pointC+4]
 		jmp .end 
 		.changeM:
-		fillPointC 1,1,erasetimes 
+		fillPointC 1,erasetimes 
 		;logica para cambio de modo de pointC
 	.end:
 endSubR 4

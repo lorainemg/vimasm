@@ -11,7 +11,7 @@ extern select.copy.normal, copy.line,
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command
 ;main externs
 extern vim.update, video.Update, videoflags
-extern undopivot,text.load ,text.save 
+extern undopivot,text.load ,text.save ,pastepRecord,pRecord.mode,pRecord.top,text.insert
 ;Para realizar las repeticiones de los operadores:
 ;Tine como parametros una funcion que recibe 2 parametros:primero las veces
 ;que se repite una operacion y luego el modo en que se realiza la operacion
@@ -160,6 +160,8 @@ mode.normal:
 		;Logica para cambiar al modo insertar
 			mov dword[mode.current],mode.finsert
 			clean
+			mov dword [pRecord.mode],text.insert
+			mov dword [pRecord.top],0
 			call mode.insert
 			jmp .end
 		.visualmode:
@@ -190,6 +192,7 @@ mode.normal:
 		;Logica para cambiar al modo reemplazar
 			mov dword [mode.current],mode.freplace
 			clean
+			mov dword [pRecord.top],0
 			call mode.replace
 			jmp .end
 		.commadmode:
@@ -204,6 +207,8 @@ mode.normal:
 		.paste:						
 		;Logica para pegar
 			clean
+			mov dword [pRecord.mode],text.insert
+			mov dword [pRecord.top],0
 			call select.paste
 			jmp .end
 		.undo:						
@@ -238,7 +243,7 @@ mode.normal:
 
 			cmp ecx,0
 			je .call 
-			.lp5:
+			.lp5: 
 			push dword [ebx]
 			add ebx,4
 			loop .lp5

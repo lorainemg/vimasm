@@ -180,10 +180,12 @@ mov dword [ebx],%1
 %endmacro 
 %macro fillPointC 2
 mov ebx, pointC
-mov [ebx],1
+mov dword [ebx],1
 add ebx,4
-mov [ebx],%1
-mov [ebx+4],%2
+mov eax,%1
+mov [ebx],eax 
+mov eax,%2
+mov [ebx+4],eax 
 %endmacro
 
 %macro fillPointC 3
