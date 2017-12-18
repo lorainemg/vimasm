@@ -2,15 +2,15 @@
 %include "tools.mac"
 
 ;keyboad externs
-extern isKey1,isKey2, isNum, getChar
+extern isKey1,isKey2, isNum
 ;text externs
-extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, cursor.search, matchLen,  text, text.deletelines
+extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, cursor.search,  text, text.deletelines
 extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes, eraseline
 extern select.copy.normal, copy.line, text.size
 ;modes externs
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command, getNumberFromASCII
 ;main externs
-extern vim.update, video.Update, videoflags, cursor.noblink, cursor.blink, video.invalidate
+extern vim.update, video.Update, videoflags, cursor.noblink, cursor.blink, video.paintIcon
 extern undopivot,text.load ,text.save 
 
 section .bss
@@ -111,6 +111,7 @@ mode.normal:
 		checkKey1 key.v, .visualmode 			;si se presiono v
 		checkKey1 key.r, .replacemode			;si se presiono r
 		checkKey2 key.shiftL, key.ptCom, .commadmode	;si se presiono shift+;
+		checkKey2 key.ctrl, key.c, .presentation
 
 	;Controles optativos:
 		checkKey1 key.u, .undo					;si se presiono u
@@ -212,6 +213,11 @@ mode.normal:
 			mov dword[mode.current],mode.fcommand
 			call start.command
 			call mode.command
+			jmp .end
+		.presentation:
+		;Logica para llamar a la presentacion:
+			clean
+			call video.paintIcon
 			jmp .end
 
 	;Comandos especiales:
@@ -480,6 +486,7 @@ eraseOperator:
 		mov eax, [cursor]
 		cmp byte[text+eax], ASCII.enter
 		je .end
+		call text.save
 		mov eax, [ebp + 4]			;eax = modo
 		cmp eax, 1					;si el modo es linea
 		je .modeline

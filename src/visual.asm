@@ -2,11 +2,12 @@
 %include "keys.mac"
 
 ;keyboad externs
-extern isKey1,isKey2,isKey3, getChar 
+extern isKey1,isKey2, getChar 
 ;text externs
-extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy, select.changemode, save, mode.insert, select.movestart, record,count
+extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy, select.changemode
+extern save, mode.insert, select.movestart, record, count
 ;tratamiento de lineas:
-extern lines.startsline, lines.endline, lines.endword, lines.current, block.insert, select.start, lines.line
+extern lines.startsline, lines.endline, lines.endword, lines.current, block.insert, select.start
 ;main externs
 extern vim.update, video.Update, videoflags, cursor.blink, cursor.noblink
 

@@ -74,6 +74,7 @@ text.startConfig:
 	; section .bss:
 		mov word [lines.lengths],1		;valor inicial del texto 
 		mov dword[text.size], 1
+		mov dword[cursor], 0
 		call text.save
 endSubR 0
 

@@ -1,10 +1,10 @@
 %include "tools.mac"
 %include "keys.mac"
 
-extern getChar, checkKey1, isKey1
+extern getChar, isKey1, checkKey1
 extern video.Update, vim.update, videoflags, showpos, tabsize
-extern text.find, text.size, text.substitute, text.findline, text.deletelines, copy.line, text.join
-extern lines.starts, lines.line, lines.current, ignoreCase
+extern text.find, text.size, text.substitute, text.findline, text.deletelines, copy.line, text.join, text.save
+extern lines.starts, lines.current, ignoreCase
 
 section .bss
 global ctext
@@ -71,7 +71,7 @@ wordtabstop		db 'tabstop=', 0
 	push string
 	call text.substitute
 	mov eax, 1
-	jmp %%.return
+	jmp %%.return	
 	%%.all:							;Para cambiar todas las ocurrencias:
 	mov dword[edi], 0
 	inc ecx							;incremento la pos actual
@@ -86,6 +86,7 @@ wordtabstop		db 'tabstop=', 0
 	push 1
 	push string
 	call text.substitute
+	mov eax, 1
 	jmp %%.return
 	%%.false:
 	xor eax, eax
@@ -364,6 +365,9 @@ replace:
 		mov ecx, 3						;la pos actual es 3
 		
 		substitute 0					;llamo a substituir el texto en la linea actual
+		cmp eax, 0
+		je .end
+		call text.save
 		jmp .end
 		.false:
 		xor eax, eax
@@ -384,6 +388,9 @@ replaceAll:
 		mov ecx, 4						;la pos actual es 3
 
 		substitute 1					;llamo a substituir el texto en todo el documento
+		cmp eax, 0
+		je .end
+		call text.save
 		jmp .end
 		.false:
 		xor eax, eax
@@ -399,6 +406,10 @@ delete:
 	startSubR
 		push dword[ebp+8]
 		call getNum					;llamo para obtener un numero despues de la posicion 8 en el texto
+		cmp eax, 0
+		je .end
+		call text.save	
+		
 		mov edx, eax				;edx = cantidad de lineas que se quieren eliminar
 		dec edx						
 		mov ebx, [ebp+4]
@@ -416,7 +427,7 @@ delete:
 yank:
 	startSubR
 		push dword[ebp+8]
-		call getNum					;busco un numero despues de la posicion 6
+		call getNum					;busco un numero despues de la posicion 6		
 		mov edx, eax				;edx = cantidad de lineas a copiar
 		dec edx
 		;Llamando a copiar lineas:
@@ -435,12 +446,16 @@ join:
 	startSubR
 		push dword[ebp+8]					
 		call getNum					;obtengo un numero desde la pos del texto para obtener la cantidad de lineas que tengo que juntar
+		cmp eax, 0
+		je .end
+		call text.save
 		mov edx, eax
 		;Llamando a copiar lineas:
 		add edx, [ebp+4]			;edx = ultima linea que tengo que juntar
 		push dword[ebp+4]
 		push edx
-		call text.join	
+		call text.join
+		.end:	
 	endSubR 8
 
 ;Para obtener el inicio de las operaciones delete, join y yank

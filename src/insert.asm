@@ -2,13 +2,13 @@
 %include "tools.mac"
 
 ;keyboard externs
-	extern isKey1,isKey2,isKey3, getChar 
+	extern isKey1,isKey2, getChar 
 
 
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
 	extern text.insert,lines.newline
-	extern lines.current, lines.startsline, erasetimes, eraseline
+	extern erasetimes, eraseline
 	extern text, text.movebackward, text.moveforward, text.save
 
 
