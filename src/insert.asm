@@ -8,8 +8,13 @@
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
 	extern text.insert,lines.newline
+<<<<<<< HEAD
 	extern erasetimes, eraseline
 	extern text, text.movebackward, text.moveforward, text.save
+=======
+	extern lines.current, lines.startsline, erasetimes, eraseline
+	extern text, text.movebackward, text.moveforward,pRecord.mode
+>>>>>>> b504b19da25a6630769fd8b14a679c4e72993e69
 
 
 ;main externs
@@ -31,6 +36,7 @@ section .text
 
 global mode.insert 
 mode.insert:
+
 	;Borrando usando operadores de movimiento:
 		checkKey2 key.ctrl, key.h, .backspace		;Si se presiona ctrl+h
 		checkKey2 key.ctrl, key.w, .eraseword		;Si se presiona ctrl+w

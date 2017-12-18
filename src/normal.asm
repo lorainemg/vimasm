@@ -10,6 +10,7 @@ extern select.copy.normal, copy.line, text.size, text.startConfig
 ;modes externs
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command, getNumberFromASCII
 ;main externs
+<<<<<<< HEAD
 extern vim.update, video.Update, videoflags, cursor.noblink, cursor.blink, video.paintIcon, video.presentation
 extern undopivot,text.load ,text.save, text.restart
 
@@ -23,6 +24,10 @@ count 		dd 0					;cuenta cuantos digitos se han escrito
 global mode.current 
 mode.current dd 0 
 
+=======
+extern vim.update, video.Update, videoflags
+extern undopivot,text.load ,text.save ,pastepRecord,pRecord.mode,pRecord.top,text.insert
+>>>>>>> b504b19da25a6630769fd8b14a679c4e72993e69
 ;Para realizar las repeticiones de los operadores:
 ;Tine como parametros una funcion que recibe 2 parametros:primero las veces
 ;que se repite una operacion y luego el modo en que se realiza la operacion
@@ -85,6 +90,19 @@ mode.current dd 0
 	%%.end:
 	clean							;limpio lastkey
 %endmacro
+
+<<<<<<< HEAD
+=======
+
+
+section .bss
+global pointC  
+pointC resd 5
+section .data
+lastkey db 0, 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
+global mode.current 
+mode.current dd 0 
+>>>>>>> b504b19da25a6630769fd8b14a679c4e72993e69
 
 
 section .text
@@ -175,6 +193,8 @@ mode.normal:
 		;Logica para cambiar al modo insertar
 			mov dword[mode.current],mode.finsert
 			clean
+			mov dword [pRecord.mode],text.insert
+			mov dword [pRecord.top],0
 			call mode.insert
 			jmp .end
 		.visualmode:
@@ -205,6 +225,7 @@ mode.normal:
 		;Logica para cambiar al modo reemplazar
 			mov dword [mode.current],mode.freplace
 			clean
+			mov dword [pRecord.top],0
 			call mode.replace
 			jmp .end
 		.commadmode:
@@ -226,6 +247,8 @@ mode.normal:
 		.paste:						
 		;Logica para pegar
 			clean
+			mov dword [pRecord.mode],text.insert
+			mov dword [pRecord.top],0
 			call select.paste
 			call text.save
 			jmp .end
@@ -255,6 +278,18 @@ mode.normal:
 			call goNumLine
 			jmp .end
 		.point:
+			mov ecx,[pointC] 
+			mov ebx,pointC
+			add ebx,4
+
+			cmp ecx,0
+			je .call 
+			.lp5: 
+			push dword [ebx]
+			add ebx,4
+			loop .lp5
+			.call: 
+			call [ebx]
 		;Logica para el comando punto
 			jmp .end
 
@@ -485,6 +520,7 @@ posWords:
 ;push dword mode: ebp + 4 (0 palabra, 1 linea, 2 principio de linea, 3 final de linea)
 eraseOperator:
 	startSubR
+	    fillPointC [ebp +8],[ebp+4],eraseOperator
 		mov eax, [cursor]
 		cmp byte[text+eax], ASCII.enter
 		je .end
