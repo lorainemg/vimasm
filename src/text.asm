@@ -39,6 +39,7 @@ section .bss
 	global cursor
 	cursor 			dd		0			;la posicion del cursor
 	
+	global movCursor
 	movCursor		db 		0		;para indicar cuando el cursor se mueve, para guardar
 	global text.size
 	text.size 		dd 		0
@@ -379,14 +380,26 @@ text.deletelines:
 		.cont:
 		
 		mov [lines.current], edx
+		
+		cmp edx, [lines.last]
+		je .caselast
+		inc dword[lines.current]
+		mov eax, [lines.starts+4*(edx+1)]
+		mov [cursor], eax
+
+		jmp .erase
+		.caselast:
+		mov [lines.current], edx
 		push edx					;para acceder a la linea final
 		call lines.endline			;busco el final de esa linea
 		dec eax						;lo decremento en 1 por ser una posicion
 		mov [cursor], eax			;pongo el cursor en el final de esa linea
+		
+		.erase:
 		mov ecx, eax				;ecx = pos final
 		mov eax, [ebp+8]			;eax = pos inicial
 		sub ecx, eax				;ecx = pos final - pos inicial
-		inc ecx						
+		
 		push ecx					;pongo las veces que se tiene que borrar como parametro
 		call erasetimes				;y llamo para borrar las veces contadas
 	endSubR 8

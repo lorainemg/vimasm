@@ -10,7 +10,7 @@
 	extern text.insert,lines.newline
 	extern erasetimes, eraseline
 	extern text, text.movebackward, text.moveforward, text.save
-	extern lines.current, lines.startsline, pRecord.mode, noRecord, pointC
+	extern lines.current, lines.startsline, pRecord.mode, noRecord, pointC, movCursor
 
 
 ;main externs
@@ -147,7 +147,11 @@ mode.insert:
 		;Logica para salir del modo
 			mov dword[save], 0
 			mov dword[start], 0
+			cmp byte[movCursor], 1
+			je .nosave
 			call text.save
+			.nosave:
+			mov byte[movCursor], 0
 			ret
 			jmp .end
 	.end:

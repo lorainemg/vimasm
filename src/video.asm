@@ -364,6 +364,7 @@ video.UpdateBuffer:
         rep stosw                           ;termino fila
         jmp .endrow
     .paintEnter:
+        mov al, ' '
         stosw
         dec ecx
         mov ah,[format.text]

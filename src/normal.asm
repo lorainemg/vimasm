@@ -513,8 +513,8 @@ eraseOperator:
 	startSubR
 		mov byte[noRecord], 1
 		mov eax, [cursor]
-		cmp byte[text+eax], ASCII.enter
-		je .end
+		; cmp byte[text+eax], ASCII.enter
+		; je .end
 	    fillPointC [ebp+8],[ebp+4],eraseOperator
 		call text.save
 		mov eax, [ebp + 4]			;eax = modo
