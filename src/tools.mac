@@ -173,42 +173,62 @@ and %1,0x0000ffff
 %define mode.fcommand 	0x10
 
 %macro fillPointC 1
-mov ebx, pointC
-mov dword[ebx],0
-add ebx,4
-mov dword [ebx],%1
+	mov ebx, pointC
+	mov dword[ebx],0
+	add ebx,4
+	mov dword [ebx],%1
 %endmacro 
+
 %macro fillPointC 2
-mov ebx, pointC
-mov dword [ebx],1
-add ebx,4
-mov eax,%1
-mov [ebx],eax 
-mov eax,%2
-mov [ebx+4],eax 
+	mov ebx, pointC
+	mov dword [ebx],1
+	add ebx,4
+	mov eax,%1
+	mov [ebx],eax 
+	mov eax,%2
+	mov [ebx+4],eax 
 %endmacro
 
 %macro fillPointC 3
-mov ebx, pointC
-mov dword [ebx],2
-add ebx,4
-mov eax,%1
-mov [ebx],eax 
-mov eax,%2
-mov [ebx+4],eax
-mov eax,%3
-mov [ebx+8],eax
+	mov ebx, pointC
+	mov dword [pointC],2
+	add ebx,4
+	mov eax,%1
+	mov [ebx],eax 
+	mov eax,%2
+	mov [ebx+4],eax
+	mov eax,%3
+	mov [ebx+8],eax
 %endmacro
+
 %macro fillPointC 4
-mov ebx, pointC
-mov [ebx],1
-add ebx,4
-mov dword[ebx],%1
-mov dword[ebx+4],%2
-mov dword [ebx+8],%3
-mov dword [ebx+12],%4
+	mov ebx, pointC
+	mov dword[ebx],3
+	add ebx,4
+	mov eax,%1
+	mov dword[ebx],eax
+	mov eax,%2
+	mov dword[ebx+4],eax
+	mov eax,%3
+	mov dword [ebx+8],eax
+	mov eax,%4
+	mov dword [ebx+12],eax
 %endmacro
 
-
+%macro fillPointC 5
+	mov ebx, pointC
+	mov dword[ebx],4
+	add ebx,4
+	mov eax,%1
+	mov dword[ebx],eax
+	mov eax,%2
+	mov dword[ebx+4],eax
+	mov eax,%3
+	mov dword [ebx+8],eax
+	mov eax,%4
+	mov dword [ebx+12],eax
+	mov eax, %5
+	mov dword[ebx+16], eax
+%endmacro
 
 %endif

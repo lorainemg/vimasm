@@ -5,7 +5,7 @@
 extern isKey1,isKey2, getChar 
 ;text externs
 extern cursor, cursor.moveH, cursor.moveV, select.mark, select.copy, select.changemode
-extern save, mode.insert, select.movestart, record, count
+extern save, mode.insert, select.movestart, record, count, erasetimes
 ;tratamiento de lineas:
 extern lines.startsline, lines.endline, lines.endword, lines.current, block.insert, select.start
 ;main externs
@@ -144,6 +144,9 @@ mode.visual:
         call mode.insert                ;y llamo a insertar      
         mov dword[save], 0              ;dejo de grabar
         
+        push dword[count]
+        call erasetimes
+
         push dword[count]               ;guardo la longitud de la palabra que se 'grabo'
         push record                     ;pongo la palabra
         call block.insert               ;y llamo a insertar texto en modo bloque

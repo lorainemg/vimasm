@@ -31,6 +31,8 @@ section .bss
 	pRecord.mode 	dd 		0
 	global pRecord.top
 	pRecord.top 	dd 		0
+	global noRecord
+	noRecord		db 		0
 
 	global undopivot
 	undopivot		dd      0
@@ -168,11 +170,14 @@ text.insert:
 		mov dword[moveV], 0				;desactualizo el valor de mover vertical
 	    inc dword [cursor]				;incremento la posicion del cursor
 
+		cmp byte[noRecord], 1
+		je .end
 		fillPointC pastepRecord
 		mov eax,[pRecord.top]
 		mov edx,[ebp+4]
 		mov [pRecord.cache+eax],dl
 		inc dword[pRecord.top]
+		.end:
 	endSubR 4
 
 global pastepRecord
@@ -335,22 +340,24 @@ text.movebackward:
 		stosd								;y lo vuelvo a guardar
 		loop .lp							;repito el ciclo las veces calculadas
 
+	cmp byte[noRecord], 1
+	je .end
 
-		mov eax,[pRecord.top]
-		cmp eax,0
-		je .changeP
-		dec dword[pRecord.top]
-		jmp .end 
-		.changeP:
-		cmp dword [pointC],1
-		jne .changeM
-		cmp dword [pointC + 8], erasetimes
-		jne .changeM
-		inc dword [pointC+4]
-		jmp .end 
-		.changeM:
-		fillPointC 1,erasetimes 
-		;logica para cambio de modo de pointC
+	mov eax, [pRecord.top]
+	cmp eax, 0
+	je .changeP
+	dec dword[pRecord.top]
+	jmp .end 
+	.changeP:
+	cmp dword [pointC], 1
+	jne .changeM
+	cmp dword [pointC + 8], erasetimes
+	jne .changeM
+	inc dword [pointC+4]
+	jmp .end 
+	.changeM:
+	fillPointC 1,erasetimes 
+	;logica para cambio de modo de pointC
 	.end:
 endSubR 4
 
@@ -618,8 +625,6 @@ endSubR 4
 
 
 ;Borra desde el cursor hasta el principio de su linea
- ;push dword position: ebp + 4
- ;call eraseline
 global eraseline
 eraseline:
 	startSubR
@@ -629,7 +634,7 @@ eraseline:
 		sub ecx, eax					;las veces q me voy a mover: cursor-start
 		push ecx
 		call erasetimes					;llamo para borrar las veces calculadas
-endSubR 4
+endSubR 0
 
 ;Borra en el texto a partir del cursor un numero determinado de veces
  ;call:
@@ -673,10 +678,8 @@ global lines.newline
 lines.newline:
 	startSubR
 		;1-calculo diferenciales: hago espacio para annadir valores nuevos
-		;ahora ya estan creados los espacios para escribir los nuevos valores, calculo  cursor-inicio y fin-cursor
-		push dword ASCII.enter				;inserto el enter en el texto
-		call text.insert
 
+		inc dword[lines.last]
 		;muevo lengths
 		mov eax,[lines.last]				;empiezo desde la ultima linea
 		lea edi,[lines.lengths + 4*(eax+1)]	;mi destino es la ultima linea +1
@@ -698,6 +701,9 @@ lines.newline:
 		inc ecx
 		rep movsd
 
+		;ahora ya estan creados los espacios para escribir los nuevos valores, calculo  cursor-inicio y fin-cursor
+		push dword ASCII.enter				;inserto el enter en el texto
+		call text.insert
 		
 		push dword [lines.current]
 		call lines.endline					;eax = fin de linea
@@ -730,7 +736,6 @@ lines.newline:
 
 		;muevo el text para crear espacio al fin de linea
 
-		inc dword[lines.last]
 		inc dword[lines.current]
 endSubR 0
 
@@ -1247,14 +1252,25 @@ block.insert:
 		push dword[ebp+12]
 		call lines.line
 		sub ecx, eax 						;ecx = linea del final de la seleccion - linea del principio de la seleccion
-       
+		inc ecx
+
+		cmp byte[noRecord], 1
+		je .cont
+		push eax
+		fillPointC ecx, [ebp+8], [ebp+4], block.insert.pRecord
+	   	pop eax
+
+		.cont:
+		mov byte[noRecord], 1
 	   	mov edx, [lines.starts+4*eax]
 		mov ebx, [ebp+12]
 		sub ebx, edx						;ebx = posicion a partir del principio de linea en la cual tengo que insertar la palabra
 		mov edx, eax						;edx = primera linea de seleccion
-		inc edx								;en la primera linea ya esta insertada la palabra, asi que me la salto
+	;	inc edx								;en la primera linea ya esta insertada la palabra, asi que me la salto
 		cld
 		.lp:								;por cada linea:
+			cmp edx, [lines.last]
+			ja .end
 			mov eax, [lines.lengths+4*edx]
 			dec eax
 			cmp eax, ebx					;es la longitud de mi linea actual menor que la posicion a partir de la cual voy a copiar?
@@ -1278,7 +1294,27 @@ block.insert:
 			inc edx							;incremento la linea que estoy analizando
 			loop .lp						;y repito el ciclo
 		.end:
+		mov byte[noRecord], 0
 	endSubR 16
+
+;Para insertar en modo bloque tipo record
+;push lines: ebp + 12 (cantidad de lineas a copiar a partir de la linea actual)
+;push ebp + 8: lenWord
+;push ebp + 4: dirWord
+global block.insert.pRecord
+block.insert.pRecord:
+	startSubR
+		mov eax, [lines.current]
+		add eax, [ebp+12]
+		dec eax
+		mov ebx, [lines.starts+4*eax]
+
+		push ebx
+		push dword[cursor]
+		push dword[ebp+8]
+		push dword[ebp+4]
+		call block.insert 
+	endSubR 12
 
 
 global text.save  

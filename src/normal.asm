@@ -4,18 +4,18 @@
 ;keyboad externs
 extern isKey1,isKey2, isNum
 ;text externs
-extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, cursor.search,  text, text.deletelines
-extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes, eraseline
+extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, cursor.search,  text, text.deletelines,block.insert.pRecord
+extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes, eraseline, eraseword
 extern select.copy.normal, copy.line, text.size, text.startConfig
 ;modes externs
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command, getNumberFromASCII
 ;main externs
 extern vim.update, video.Update, videoflags, cursor.noblink, cursor.blink, video.paintIcon, video.presentation
-extern undopivot,text.load ,text.save, text.restart,pastepRecord,pRecord.mode,pRecord.top,text.insert
+extern undopivot,text.load ,text.save, text.restart,pastepRecord,pRecord.mode,pRecord.top,text.insert, noRecord
 
 section .bss
 global pointC  
-pointC 	resd 5
+pointC 	resd 10
 repit	resb 8					;se ponen los digitos que se escriben
 
 section .data
@@ -238,6 +238,7 @@ mode.normal:
 			mov dword [pRecord.top],0
 			call select.paste
 			call text.save
+		;	break
 			jmp .end
 		.undo:						
 		;Logica para deshacer una accion
@@ -265,6 +266,8 @@ mode.normal:
 			call goNumLine
 			jmp .end
 		.point:
+		;Logica para el comando punto
+			mov byte[noRecord], 1
 			mov ecx,[pointC] 
 			mov ebx,pointC
 			add ebx,4
@@ -272,12 +275,13 @@ mode.normal:
 			cmp ecx,0
 			je .call 
 			.lp5: 
-			push dword [ebx]
-			add ebx,4
-			loop .lp5
+				mov eax, [ebx]
+				push dword [ebx]
+				add ebx,4
+				loop .lp5
 			.call: 
 			call [ebx]
-		;Logica para el comando punto
+			mov byte[noRecord], 0
 			jmp .end
 
 		.copy:
@@ -507,10 +511,11 @@ posWords:
 ;push dword mode: ebp + 4 (0 palabra, 1 linea, 2 principio de linea, 3 final de linea)
 eraseOperator:
 	startSubR
-	    fillPointC [ebp +8],[ebp+4],eraseOperator
+		mov byte[noRecord], 1
 		mov eax, [cursor]
 		cmp byte[text+eax], ASCII.enter
 		je .end
+	    fillPointC [ebp+8],[ebp+4],eraseOperator
 		call text.save
 		mov eax, [ebp + 4]			;eax = modo
 		cmp eax, 1					;si el modo es linea
@@ -531,7 +536,6 @@ eraseOperator:
 		call text.deletelines		;llamo para borrar las veces calcualdas
 		jmp .end
 	.modestart:						;Para modo principio de linea:
-		push dword[cursor]			;se empieza desde el principio del cursor
 		call eraseline				;y se elimina desde alli hasta el principio de linea
 		jmp .end
 	.modeend:						;Para borrar hasta el final de una linea
@@ -539,6 +543,7 @@ eraseOperator:
 		push dword[ebp+8]			;la cantidad de veces es el parametro pasado
 		call text.deletelines		;y se elimina desde alli hasta la ultima posicion de la ultima linea senalada
 		.end:
+		mov byte[noRecord], 0
 	endSubR 8
 
 ;Operador de borrar en modo palabra

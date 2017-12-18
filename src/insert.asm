@@ -10,7 +10,7 @@
 	extern text.insert,lines.newline
 	extern erasetimes, eraseline
 	extern text, text.movebackward, text.moveforward, text.save
-	extern lines.current, lines.startsline, erasetimes, eraseline, pRecord.mode
+	extern lines.current, lines.startsline, pRecord.mode, noRecord, pointC
 
 
 ;main externs
@@ -47,12 +47,12 @@ mode.insert:
 		je .commad					;entonces se salta hasta el final
 		
 		cmp byte[save], 0
-		je .noRecord
+		je .continue
 		mov edx, [count]
 		mov [record+edx], al
 		inc dword[count]
 		
-		.noRecord:
+		.continue:
 		push eax					;se guarda el caracter en la pila como parametro de text.write
 		call text.insert				;se procede a escribir el caracter en el texto	call UpdateBuffer
 		jmp .end
@@ -126,14 +126,20 @@ mode.insert:
 		.eraseword:
 		;Logica para borrar una palabra. Borra desde la posicion del cursor en adelante
 			mov dword[save], 0
+			fillPointC eraseword
+			mov byte[noRecord], 1
 			call eraseword		
+			mov byte[noRecord], 0
 			call text.save
 			jmp .end
 
 		.erasestartline:
 		;Logica para borrar hasta el inicio de linea
 			mov dword[save], 0
+			fillPointC eraseline
+			mov byte[noRecord], 1
 			call eraseline
+			mov byte[noRecord], 0
 			call text.save
 			jmp .end
 
@@ -141,7 +147,6 @@ mode.insert:
 		;Logica para salir del modo
 			mov dword[save], 0
 			mov dword[start], 0
-
 			call text.save
 			ret
 			jmp .end
@@ -156,6 +161,7 @@ mode.insert:
 ret
 
 ;Borra desde el cursor hasta el principio de una palabra
+global eraseword
 eraseword:
 	startSubR
 		mov eax, [cursor]				;eax = cursor
