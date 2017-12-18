@@ -394,7 +394,8 @@ text.deletelines:
 		call lines.endline			;busco el final de esa linea
 		dec eax						;lo decremento en 1 por ser una posicion
 		mov [cursor], eax			;pongo el cursor en el final de esa linea
-		
+		inc eax
+
 		.erase:
 		mov ecx, eax				;ecx = pos final
 		mov eax, [ebp+8]			;eax = pos inicial

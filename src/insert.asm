@@ -7,7 +7,7 @@
 
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
-	extern text.insert,lines.newline
+	extern text.insert,lines.newline, lines.last,lines.lengths
 	extern erasetimes, eraseline
 	extern text, text.movebackward, text.moveforward, text.save
 	extern lines.current, lines.startsline, pRecord.mode, noRecord, pointC, movCursor
@@ -37,6 +37,8 @@ mode.insert:
 		checkKey2 key.ctrl, key.h, .backspace		;Si se presiona ctrl+h
 		checkKey2 key.ctrl, key.w, .eraseword		;Si se presiona ctrl+w
 		checkKey2 key.ctrl, key.u, .erasestartline	;Si se presiona ctrl+u
+
+		checkKey2 key.ctrl, key.y, .registercopy
 
 		cmp dword[start], 0
 		je .end2
@@ -141,6 +143,35 @@ mode.insert:
 			call eraseline
 			mov byte[noRecord], 0
 			call text.save
+			jmp .end
+
+		.registercopy:
+		;Logica para copiar desde registro
+			;calculo el caracter del cursor
+			mov eax,[lines.current]
+			cmp eax,0
+			je .end
+
+			push eax
+			call lines.startsline
+			mov edx,[cursor]
+			sub edx,eax
+
+			mov eax,[lines.current]
+			mov eax,[lines.lengths + 4*(eax-1)]
+			dec eax
+			cmp edx,eax
+			je .end  
+
+			mov eax, [lines.current]
+			dec eax
+			push eax 
+			call lines.startsline
+			add eax,edx
+			xor edx,edx  
+			mov dl,[text + eax]
+			push edx
+			call text.insert
 			jmp .end
 
 		.exitmode:

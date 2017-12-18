@@ -70,8 +70,6 @@ mode.current 	dd 0
 	je %%.yank
 	cmp byte[lastkey], 'd'			;si fue d borro
 	je %%.delete
-	cmp byte[lastkey], 'c'			;y de ser c borro tambien, pero luego entro en modo insercion
-	je %%.delete
 	jmp %%.end
 	%%.yank:						;Para copiar:
 		repetition %1, copyOperator	;busco las repeticiones que pudieran haber y entro en el modo correspondiente a copiar
@@ -79,10 +77,6 @@ mode.current 	dd 0
 	%%.delete:						;Para eliminar:
 		call text.save
 		repetition %1, eraseOperator ;busco las repeticiones que pudieran haber y entro en el modo correspondient a borrar
-		cmp byte[lastkey], 'c'		;se entro en modo reemplazar?
-		jne %%.end					;si no se hizo, entonces termino
-		clean						;sino, limpio lastkey
-		call mode.insert			;y entro en modo insetar
 	%%.end:
 	clean							;limpio lastkey
 %endmacro
@@ -238,7 +232,6 @@ mode.normal:
 			mov dword [pRecord.top],0
 			call select.paste
 			call text.save
-		;	break
 			jmp .end
 		.undo:						
 		;Logica para deshacer una accion
@@ -294,15 +287,7 @@ mode.normal:
 			jmp .end			
 		.replace:
 		;Logica para reemplazar con repeticion + operadores de movimiento
-			cmp byte[lastkey], 'c'			;si el ultimo caracter analizado fue c
-			je .line						;entonces, realizo la operacion
-			mov byte[lastkey], 'c'			;si no, cambio el valor de la ultima tecla
-			jmp .end						;y voy al final
-			call text.save
-			.line:							;Para realizar la operacion:
-				repetition 1, eraseOperator	;busco las repeticiones y entro en modo linea a eraseOperator
-				clean						;limpio los valores de lastKey
-				call mode.insert			;y llamo al modo insertar
+			operator 'c', replaceOperator
 			jmp .end			
 
 		.endline:
@@ -515,7 +500,11 @@ eraseOperator:
 		mov eax, [cursor]
 		; cmp byte[text+eax], ASCII.enter
 		; je .end
+		cmp byte[noRecord], 1
+		je .cont
 	    fillPointC [ebp+8],[ebp+4],eraseOperator
+		.cont:
+
 		call text.save
 		mov eax, [ebp + 4]			;eax = modo
 		cmp eax, 1					;si el modo es linea
@@ -584,4 +573,22 @@ eraseOperator.lines:
 		inc ecx						
 		push ecx					;pongo las veces que se tiene que borrar como parametro
 		call erasetimes				;y llamo para borrar las veces contadas
+	endSubR 8
+
+
+;Operador para borrar
+;call:
+;push dword times: ebp + 8
+;push dword mode: ebp + 4 (0 palabra, 1 linea, 2 principio de linea, 3 final de linea)
+replaceOperator:
+	startSubR
+		mov byte[noRecord], 1
+		fillPointC [ebp+8],[ebp+4],replaceOperator
+		push dword[ebp+8]
+		push dword[ebp+4]
+		call eraseOperator
+		mov byte[noRecord], 0
+		mov dword[mode.current], mode.finsert
+		call mode.insert			;y llamo al modo insertar
+		clean
 	endSubR 8

@@ -270,7 +270,8 @@ video.presentation:
     cmp byte [lastScan],0x53
     jbe .end 
     jmp .lp 
-    .end:     
+    .end:    
+    call video.Update 
 ret 
 
 
@@ -703,7 +704,7 @@ video.UpdateLastRow:
         mov esi,mode.normal.tag
         jmp .end
     .insrt:
-        mov esi,mode.insert.tag
+        mov esi, mode.insert.tag
         jmp .end
     .replc:
         mov esi,mode.replace.tag
