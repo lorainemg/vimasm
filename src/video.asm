@@ -92,7 +92,11 @@ section .data
     mode.insert.tag  db "<INSERT>",0
     mode.replace.tag  db "<REPLACE>",0
 
-
+    message1                db   "Proyecto de PMI 2017-2018: Vim",0
+    message2                db   " -Integrantes:",0
+    message.name1           db   "     ",250,"Loraine Monteagudo Garcia",0
+    message.name2           db   "     ",250,"Tony Raul Blanco Fernandez",0
+    message3                db   "Press any key to continue...",0
 
         ;     0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45  46  47  48
 icon   db     0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf,0xf, ;0
@@ -152,7 +156,7 @@ extern interval,delay
 
 extern ctext,ccursor,top
 extern patternLen,search,matchLen 
-extern mode.current
+extern mode.current,lastScan,UpdateKeyboard
 section .text
 
 global video.paintIcon
@@ -187,7 +191,90 @@ video.paintIcon:
     mov ah, 0xff
     mov ecx,80
     rep stosw
+
+    mov dword [timer],0
+    
+    .lp: 
+    push dword 1000
+    push dword timer
+    call delay
+    cmp  eax,0
+    je .lp  
+
+
 ret
+
+%macro printMssg 1
+ %%.printMessg:
+    lodsb 
+    cmp al,0 
+    je %%.end
+    mov ah,%1
+    stosw
+    jmp %%.printMessg 
+    %%.end:  
+%endmacro
+global video.presentation
+video.presentation:
+
+    mov edi,buffer 
+    mov ecx,2000
+    mov ah,0x88
+    rep stosw
+
+    mov eax,[buffer.width]
+    mov edi,buffer
+    mov esi,message1
+    printMssg 0x8c
+    mov eax,[buffer.width]
+    lea edi,[buffer + eax*2]
+    mov esi,message2
+    printMssg 0x83
+     mov eax,[buffer.width]
+    lea edi,[buffer + eax*4]
+    mov esi,message.name1
+    printMssg  0x8f
+     mov eax,[buffer.width]
+     mov dx,6 
+     mul dx
+    lea edi,[buffer + eax]
+    mov esi,message.name2
+    printMssg  0x8f
+     
+     mov dword [timer],0
+    
+    .lp:
+     
+    mov eax,[buffer.width]
+    mov dl,46
+    mul dl
+    add eax,50
+    lea edi,[buffer + eax]
+    mov esi,message3
+    
+    .time:
+    push dword 500
+    push dword timer
+    call delay
+    cmp eax,0
+    je .time
+    inc ecx 
+    test ecx,1
+    jz .alt 
+    printMssg 0x87
+    jmp .count  
+    .alt:
+    printMssg 0x88
+    
+    .count:
+    call UpdateKeyboard
+    cmp byte [lastScan],0x53
+    jbe .end 
+    jmp .lp 
+    .end:    
+   
+ret 
+
 
 ;Retorna la cantidad de filas que ocupa una linea en la pantalla
     ;push line
