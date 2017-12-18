@@ -78,6 +78,14 @@ text.startConfig:
 		call text.save
 endSubR 0
 
+global text.restart
+text.restart:
+	startSubR
+	mov dword[undopivot], 3004
+	call text.load
+	call text.startConfig
+	endSubR 0
+
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHH TEXT CONTROL HHHHHHHHHHHHHHHHHH
 ;HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH 
@@ -190,6 +198,14 @@ text.movebackward:
 
 	cmp eax, 0								;si estoy en el primer caracter
 	jl .end									;entonces no borro
+
+	push eax
+	cmp byte[movCursor], 0
+	je .cont
+	mov byte[movCursor], 0
+	call text.save
+	.cont:
+	pop eax
 
 	mov dl, [text+eax]
 	push edx								;guardo el caracter que voy a borrar para analizarlo luego
@@ -1257,6 +1273,8 @@ startSubR
 	mov edi,text 
 	rep movsd
 
+	cmp dword[undopivot], 3004
+	je .end
 	sub dword[undopivot],3004 
-	
+	.end:
 endSubR 0

@@ -16,9 +16,10 @@ global vim.start
     or byte[videoflags], 1 << 1
 
     call video.paintIcon
-  ;Calibrate the timing
     call calibrate
+  ;Calibrate the timing
     call video.presentation
+
   ;Cofiguro el inicio de los estados de los ensamblados
     call text.startConfig
   ;llamo a la funcion especial que abre el comienzo de la pantalla inicial, y sus respectivas opciones.

@@ -4,7 +4,7 @@
 extern getChar, isKey1, checkKey1
 extern video.Update, vim.update, videoflags, showpos, tabsize
 extern text.find, text.size, text.substitute, text.findline, text.deletelines, copy.line, text.join, text.save
-extern lines.starts, lines.current, ignoreCase
+extern lines.starts, lines.current, ignoreCase, lines.last
 
 section .bss
 global ctext
@@ -406,10 +406,9 @@ delete:
 	startSubR
 		push dword[ebp+8]
 		call getNum					;llamo para obtener un numero despues de la posicion 8 en el texto
-		cmp eax, 0
-		je .end
+		push eax
 		call text.save	
-		
+		pop eax
 		mov edx, eax				;edx = cantidad de lineas que se quieren eliminar
 		dec edx						
 		mov ebx, [ebp+4]
@@ -446,9 +445,9 @@ join:
 	startSubR
 		push dword[ebp+8]					
 		call getNum					;obtengo un numero desde la pos del texto para obtener la cantidad de lineas que tengo que juntar
-		cmp eax, 0
-		je .end
+		push eax
 		call text.save
+		pop eax
 		mov edx, eax
 		;Llamando a copiar lineas:
 		add edx, [ebp+4]			;edx = ultima linea que tengo que juntar
@@ -464,6 +463,8 @@ initOp:
 		push dword 1
 		call getNum							;llamo para obtener un numero a partir de la pos 1
 		dec eax
+		cmp eax, [lines.last]
+		jae .end2
 		push eax							;guardo el numero en pila
 
 		mov edx, [numLen]

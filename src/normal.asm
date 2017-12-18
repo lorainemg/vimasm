@@ -6,12 +6,12 @@ extern isKey1,isKey2, isNum
 ;text externs
 extern cursor.moveH, cursor.moveV, cursor.moveline, cursor, cursor.search,  text, text.deletelines
 extern lines.last, lines.endword, lines.current, lines.starts, lines.endline, erasetimes, eraseline
-extern select.copy.normal, copy.line, text.size
+extern select.copy.normal, copy.line, text.size, text.startConfig
 ;modes externs
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command, getNumberFromASCII
 ;main externs
-extern vim.update, video.Update, videoflags, cursor.noblink, cursor.blink, video.paintIcon
-extern undopivot,text.load ,text.save 
+extern vim.update, video.Update, videoflags, cursor.noblink, cursor.blink, video.paintIcon, video.presentation
+extern undopivot,text.load ,text.save, text.restart
 
 section .bss
 repit	resb 8					;se ponen los digitos que se escriben
@@ -217,7 +217,9 @@ mode.normal:
 		.presentation:
 		;Logica para llamar a la presentacion:
 			clean
+			call text.restart
 			call video.paintIcon
+			call video.presentation
 			jmp .end
 
 	;Comandos especiales:

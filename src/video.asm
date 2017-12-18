@@ -201,7 +201,6 @@ video.paintIcon:
     cmp  eax,0
     je .lp  
 
-
 ret
 
 %macro printMssg 1
@@ -271,8 +270,7 @@ video.presentation:
     cmp byte [lastScan],0x53
     jbe .end 
     jmp .lp 
-    .end:    
-   
+    .end:     
 ret 
 
 
