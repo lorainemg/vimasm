@@ -13,11 +13,11 @@ section .bss
 	global text
 	text			resb 	65535						;donde guardo el texto
 	;trabajo con lineas
+	global lines.lengths
+	lines.lengths 	resd 	800
 	global lines.starts
 	lines.starts	resd 	800							;control de lineas :  <comienzo,cantidad> en funcion de bytes del text
 	
-	global lines.lengths
-	lines.lengths 	resd 	800
 
 	undo 			resd     899200						;cincuenta reservaciones
 
@@ -105,6 +105,15 @@ text.replace:
 		mov ebx,text  			;ebx =text
 		add ebx,[cursor]		;ebx = text + cursor
 		
+		cmp byte[movCursor], 0
+		je .cont
+
+		mov byte[movCursor], 0
+		mov dword [pRecord.top], 0
+		call text.save
+
+		.cont:
+		
 		cmp byte[ebx], ASCII.enter	;el caracter q voy a reemplazar es el de fin de linea?
 		jne .normal				;si no lo es, muevo el texto normal
 		
@@ -125,7 +134,6 @@ text.replace:
 		mov eax,[pRecord.top]
 		mov edx,[ebp+4]
 		mov [pRecord.cache+eax],dl
-		mov byte [pRecord.cache+eax+1],0
 		inc dword[pRecord.top]
 		mov dword [pRecord.mode],text.replace
 endSubR 4
@@ -144,6 +152,7 @@ text.insert:
 		je .cont
 
 		mov byte[movCursor], 0
+		mov dword [pRecord.top], 0
 		call text.save
 
 		.cont:
@@ -163,7 +172,6 @@ text.insert:
 		mov eax,[pRecord.top]
 		mov edx,[ebp+4]
 		mov [pRecord.cache+eax],dl
-		mov byte [pRecord.cache+eax+1],0		
 		inc dword[pRecord.top]
 	endSubR 4
 
@@ -247,8 +255,11 @@ text.movebackward:
 	push eax
 	cmp byte[movCursor], 0
 	je .cont
+	
 	mov byte[movCursor], 0
 	call text.save
+	mov dword [pRecord.top], 0
+
 	.cont:
 	pop eax
 
@@ -360,6 +371,7 @@ text.deletelines:
 		jbe .cont
 		mov edx, [lines.last]
 		.cont:
+		
 		mov [lines.current], edx
 		push edx					;para acceder a la linea final
 		call lines.endline			;busco el final de esa linea
@@ -661,10 +673,13 @@ global lines.newline
 lines.newline:
 	startSubR
 		;1-calculo diferenciales: hago espacio para annadir valores nuevos
-		
+		;ahora ya estan creados los espacios para escribir los nuevos valores, calculo  cursor-inicio y fin-cursor
+		push dword ASCII.enter				;inserto el enter en el texto
+		call text.insert
+
 		;muevo lengths
 		mov eax,[lines.last]				;empiezo desde la ultima linea
-		lea edi,[lines.lengths + 4*(eax+1)]	;mi destino es la linea donde estoy +1
+		lea edi,[lines.lengths + 4*(eax+1)]	;mi destino es la ultima linea +1
 		lea esi,[lines.lengths + 4*eax]		;copio desde la linea actual
 		std 
 		mov ecx,eax							;calculo cuanto me voy a mover:ultima linea - actual
@@ -683,12 +698,10 @@ lines.newline:
 		inc ecx
 		rep movsd
 
-		;ahora ya estan creados los espacios para escribir los nuevos valores, calculo  cursor-inicio y fin-cursor
-		push dword ASCII.enter				;inserto el enter en el texto
-		call text.insert
-
+		
 		push dword [lines.current]
 		call lines.endline					;eax = fin de linea
+		
 		mov edx, eax						;salvo en edx
 		push edx							;salvo fin de linea
 		push dword [lines.current]
@@ -707,15 +720,6 @@ lines.newline:
 		pop edx								;recupero el tamano de la otra linea
 		mov [lines.lengths +4*eax],edx 		;tamanno de la linea partida = cursor-linea +1 (mas uno lo que este se annade luego)	
 
-		;Parche!!! Para decrementar el length de la ultima linea si no es donde se creo la nueva linea
-		cmp eax, [lines.last]				;si cree la linea en la ultima linea, continuo
-		je .continue
-		
-		mov eax, [lines.last]
-		inc eax
-		dec dword[lines.lengths+4*eax]		;si no, decremento el length de lo que sera la ultima linea
-
-		.continue:
 		;ajusto inicio de la linea nueva
 		mov eax,[lines.current]
 		push eax
@@ -725,6 +729,7 @@ lines.newline:
 		mov dword[lines.starts + 4*(eax+1)],edx ;inicio de mi nueva linea:final de la otra + 1
 
 		;muevo el text para crear espacio al fin de linea
+
 		inc dword[lines.last]
 		inc dword[lines.current]
 endSubR 0
@@ -1209,6 +1214,7 @@ global select.paste
 select.paste:
 	startSubR
 		mov esi, select.cache			;copio desde el select cache, donde esta el texto copiado
+		cld
 		.lp:
 			lodsb						;al = caracter que va a ser copiado
 			cmp al, 0					;si al = 0

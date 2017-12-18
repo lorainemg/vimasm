@@ -8,6 +8,8 @@ Para más información acerca de la orientación del proyecto ir a [ORIENTACIÓN
 
 Funcionalidades implementadas:
 (0.75):Operadores+repeticiones+movimiento
+(0.75):comando punto
+(0.5):seleccion en bloque
 (0.5):insercion en modo bloque  
 (0.5):reemplazar texto
 (0.25):ir al inicio, final y una linea especifica del fichero

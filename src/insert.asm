@@ -8,13 +8,9 @@
 ;text externs
 	extern cursor.moveH, cursor.moveV, cursor
 	extern text.insert,lines.newline
-<<<<<<< HEAD
 	extern erasetimes, eraseline
 	extern text, text.movebackward, text.moveforward, text.save
-=======
-	extern lines.current, lines.startsline, erasetimes, eraseline
-	extern text, text.movebackward, text.moveforward,pRecord.mode
->>>>>>> b504b19da25a6630769fd8b14a679c4e72993e69
+	extern lines.current, lines.startsline, erasetimes, eraseline, pRecord.mode
 
 
 ;main externs

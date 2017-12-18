@@ -10,24 +10,20 @@ extern select.copy.normal, copy.line, text.size, text.startConfig
 ;modes externs
 extern mode.insert, mode.replace, mode.visual, start.visual, select.paste, mode.command, start.command, getNumberFromASCII
 ;main externs
-<<<<<<< HEAD
 extern vim.update, video.Update, videoflags, cursor.noblink, cursor.blink, video.paintIcon, video.presentation
-extern undopivot,text.load ,text.save, text.restart
+extern undopivot,text.load ,text.save, text.restart,pastepRecord,pRecord.mode,pRecord.top,text.insert
 
 section .bss
+global pointC  
+pointC 	resd 5
 repit	resb 8					;se ponen los digitos que se escriben
 
 section .data
-lastkey 	db 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
-count 		dd 0					;cuenta cuantos digitos se han escrito
-
+lastkey 		db 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
+count 			dd 0					;cuenta cuantos digitos se han escrito
 global mode.current 
-mode.current dd 0 
+mode.current 	dd 0 
 
-=======
-extern vim.update, video.Update, videoflags
-extern undopivot,text.load ,text.save ,pastepRecord,pRecord.mode,pRecord.top,text.insert
->>>>>>> b504b19da25a6630769fd8b14a679c4e72993e69
 ;Para realizar las repeticiones de los operadores:
 ;Tine como parametros una funcion que recibe 2 parametros:primero las veces
 ;que se repite una operacion y luego el modo en que se realiza la operacion
@@ -91,18 +87,9 @@ extern undopivot,text.load ,text.save ,pastepRecord,pRecord.mode,pRecord.top,tex
 	clean							;limpio lastkey
 %endmacro
 
-<<<<<<< HEAD
-=======
 
 
-section .bss
-global pointC  
-pointC resd 5
-section .data
-lastkey db 0, 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
-global mode.current 
-mode.current dd 0 
->>>>>>> b504b19da25a6630769fd8b14a679c4e72993e69
+
 
 
 section .text
