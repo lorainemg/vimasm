@@ -1,6 +1,6 @@
 %include "tools.mac"
 
-extern UpdateBuffer
+extern UpdateBuffer,pointC
 
 section .edata
 	
@@ -8,6 +8,7 @@ section .edata
 
 section .bss
 
+	pRecord.cache   resb 	400
 	var             resd 	10	
 	global text
 	text			resb 	65535						;donde guardo el texto
@@ -27,6 +28,10 @@ section .bss
 	
 	
 	section .data
+	global pRecord.mode
+	pRecord.mode 	dd 		0
+	pRecord.top 	dd 		0
+
 	global undopivot
 	undopivot		dd      0
 	global cursor
@@ -104,6 +109,13 @@ text.replace:
 		mov dword[moveV], 0		;desactualizo el valor de mover vertical
 	    inc dword [cursor]		;incremento la posicion del cursor
 
+		fillPointC pastepRecord
+		mov eax,[pRecord.top]
+		mov edx,[ebp+4]
+		mov [pRecord.cache+eax],dl
+		mov byte [pRecord.cache+eax+1],0
+		inc dword[pRecord.top]
+		mov dword [pRecord.mode],text.replace
 endSubR 4
 
 ;call:
@@ -112,6 +124,7 @@ endSubR 4
 global text.insert
 text.insert:
 	startSubR
+
 		push dword[cursor]
 		call text.moveforward
 
@@ -126,8 +139,33 @@ text.insert:
 
 		mov dword[moveV], 0				;desactualizo el valor de mover vertical
 	    inc dword [cursor]				;incremento la posicion del cursor
+
+		fillPointC pastepRecord
+		mov eax,[pRecord.top]
+		mov edx,[ebp+4]
+		mov [pRecord.cache+eax],dl
+		mov byte [pRecord.cache+eax+1],0
+		
+		inc dword[pRecord.top]
 	endSubR 4
 
+pastepRecord:
+startSubR
+		mov esi, pRecord.cache			;copio desde el select cache, donde esta el texto copiado
+		.lp:
+			lodsb						;al = caracter que va a ser copiado
+			cmp al, 0					;si al = 0
+			je .end						;entonces ya termine de copiar
+			cmp al, ASCII.enter			;al == enter?
+			je .newline					;si lo es, tengo que crear una nueva linea
+			push eax					;sino pongo el caracter actual
+			call [pRecord.mode]			;y lo inserto en el texto
+			jmp .lp
+			.newline:					;para crear una nueva linea
+				call lines.newline		;llamo  a crear linea
+				jmp .lp
+		.end: 
+endSubR 0
 ;mueve todo el texto
 	;call 
 	;push dword start: ebp + 4
@@ -252,6 +290,23 @@ text.movebackward:
 		dec eax								;decremento el inicio de las lineas
 		stosd								;y lo vuelvo a guardar
 		loop .lp							;repito el ciclo las veces calculadas
+
+
+		mov eax,[pRecord.top]
+		cmp eax,0
+		je .changeP
+		dec dword[pRecord.top]
+		jmp .end 
+		.changeP:
+		cmp dword [pointC],1
+		jne .changeM
+		cmp dword [pointC + 8], erasetimes
+		jne .changeM
+		inc dword [pointC+4]
+		jmp .end 
+		.changeM:
+		fillPointC 1,1,erasetimes 
+		;logica para cambio de modo de pointC
 	.end:
 endSubR 4
 

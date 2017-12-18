@@ -71,10 +71,16 @@ extern undopivot,text.load ,text.save
 	clean							;limpio lastkey
 %endmacro
 
+
+
+section .bss
+global pointC  
+pointC resd 5
 section .data
 lastkey db 0, 0, 0					;para llevar el control de la secuencia de teclas que se han presionado
 global mode.current 
 mode.current dd 0 
+
 
 section .text
 
@@ -226,6 +232,18 @@ mode.normal:
 			call goNumLine
 			jmp .end
 		.point:
+			mov ecx,[pointC] 
+			mov ebx,pointC
+			add ebx,4
+
+			cmp ecx,0
+			je .call 
+			.lp5:
+			push dword [ebx]
+			add ebx,4
+			loop .lp5
+			.call: 
+			call [ebx]
 		;Logica para el comando punto
 			jmp .end
 
@@ -448,6 +466,7 @@ posWords:
 ;push dword mode: ebp + 4 (0 palabra, 1 linea, 2 principio de linea, 3 final de linea)
 eraseOperator:
 	startSubR
+	    fillPointC [ebp +8],[ebp+4],eraseOperator
 		mov eax, [cursor]
 		cmp byte[text+eax], ASCII.enter
 		je .end
