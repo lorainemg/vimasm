@@ -1,10 +1,10 @@
 # Vimasm
 
-Integrantes:
-Loraine Monteagudo García C211
-Tony Raúl Blanco Fernández C211
+## Integrantes:
+Loraine Monteagudo García
+Tony Raúl Blanco Fernández
 
-Funcionalidades implementadas:
+## Funcionalidades implementadas:
 Además de las funcionalidades básicas que requieren 3ptos se implementaron las siguientes funcionalidades optativas:
 
 (0.75): Operadores+repeticiones+movimiento.
@@ -25,7 +25,8 @@ Además de las funcionalidades básicas que requieren 3ptos se implementaron las
 (0.25): Pegar desde registro.
 
 Estructura del proyecto:
-vimasm/
+
+```vimasm/
     ├──	src/
     │	├──	multiboot.asm
     │	├──	boot.asm
@@ -48,3 +49,8 @@ vimasm/
     ├──	linker.ld
     ├──	menu.lst
     └──	stage2_eltorito
+```
+
+## Más información
+
+Más información sobre los detalles del proyecto, se puede encontrar en [ORIENTACI%C3%93N.md](https://github.com/lorainemg/vimasm/blob/main/ORIENTACI%C3%93N.md)
