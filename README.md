@@ -1,28 +1,28 @@
 # Vimasm
 
 Integrantes:
-Loraine Monteagudo Garcia C211
-Tony Raul Blanco Fernandez C211
+Loraine Monteagudo García C211
+Tony Raúl Blanco Fernández C211
 
 Funcionalidades implementadas:
-Ademas de las funcionalidades basicas que requieren 3ptos se implementaron las siguientes funcionalidades optativas:
+Además de las funcionalidades básicas que requieren 3ptos se implementaron las siguientes funcionalidades optativas:
 
-(0.75):Operadores+repeticiones+movimiento
-(0.75):comando punto
-(0.5):insercion en modo bloque  
-(0.5):seleccion en bloque
-(0.5):reemplazar texto
-(0.25):ir al inicio, final y una linea especifica del fichero
-(0.25):entrar en modo sobreescribir
-(0.25):borrar utilizando operadores de movimiento
-(0.25):mover el rango de seleccion con operadores de movimiento
-(0.25):especificar preferencias
-(0.25):las operaciones: delete, yank, join, move de la linea de comando
-(0.25):buscar texto y moverse con n y N
-(0.25):deshacer una accion
-(0.25):deshacer infinito
-(0.25):blinking cursor
-(0.25):pegar desde registro
+(0.75): Operadores+repeticiones+movimiento.
+(0.75): Comando punto.
+(0.5): Inserción en modo bloque .
+(0.5): Selección en bloque.
+(0.5): Reemplazar texto.
+(0.25): Ir al inicio, final y una línea especifica del fichero.
+(0.25): Entrar en modo sobrescribir.
+(0.25): Borrar utilizando operadores de movimiento.
+(0.25): Mover el rango de selección con operadores de movimiento.
+(0.25): Especificar preferencias.
+(0.25): Las operaciones: *delete*, *yank*, *join*, *move* de la línea de comando.
+(0.25): Buscar texto y moverse con `n` y `N`.
+(0.25): Deshacer una acción.
+(0.25): Deshacer infinito.
+(0.25): *Blinking* cursor.
+(0.25): Pegar desde registro.
 
 Estructura del proyecto:
 vimasm/
